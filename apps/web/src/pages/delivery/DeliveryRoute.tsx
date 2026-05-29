@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
-function authH() { const t = localStorage.getItem("vdf_token"); return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) }; }
+function authH() { const t = localStorage.getItem("vdf_delivery_token"); return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) }; }
 
 type Step = "list" | "confirm" | "collect" | "done";
 
@@ -73,7 +73,7 @@ export default function DeliveryRoute() {
   const summary = data?.summary ?? { total: 0, done: 0, pending: 0, totalCollection: 0 };
   const orders = data?.orders ?? [];
   const pendingOrders = orders.filter((o: any) => o.status !== "delivered" && o.status !== "failed" && o.status !== "cancelled");
-  const user = (() => { try { return JSON.parse(localStorage.getItem("vdf_user") ?? "{}"); } catch { return {}; } })();
+  const user = (() => { try { return JSON.parse(localStorage.getItem("vdf_delivery_user") ?? "{}"); } catch { return {}; } })();
 
   // ── List view ──────────────────────────────────────────────────────────────
   if (step === "list") return (

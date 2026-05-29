@@ -5,7 +5,7 @@ import DeliveryCollect from "./DeliveryCollect";
 
 export default function DeliveryApp() {
   const nav = useNavigate();
-  const user = (() => { try { return JSON.parse(localStorage.getItem("vdf_user") ?? "null"); } catch { return null; } })();
+  const user = (() => { try { return JSON.parse(localStorage.getItem("vdf_delivery_user") ?? "null"); } catch { return null; } })();
 
   useEffect(() => {
     if (!user || user.role !== "delivery_staff") nav("/delivery-login");
@@ -61,7 +61,7 @@ function DeliveryProfile({ user }: { user: any }) {
       </div>
       <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{user.name}</div>
       <div style={{ fontSize: 14, color: "var(--muted)", marginBottom: 28 }}>{user.phone}</div>
-      <button onClick={() => { localStorage.removeItem("vdf_token"); localStorage.removeItem("vdf_user"); nav("/delivery-login"); }}
+      <button onClick={() => { localStorage.removeItem("vdf_delivery_token"); localStorage.removeItem("vdf_delivery_user"); nav("/delivery-login"); }}
         style={{ background: "var(--red-soft)", color: "var(--red-ink)", border: "none", borderRadius: 12, padding: "12px 28px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
         Sign out
       </button>

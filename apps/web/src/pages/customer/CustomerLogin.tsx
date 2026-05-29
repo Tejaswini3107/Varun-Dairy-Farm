@@ -40,8 +40,8 @@ export default function CustomerLogin() {
       if (data.data.user.role !== "customer") {
         setError("This portal is for customers only. Use the Delivery App instead."); return;
       }
-      localStorage.setItem("vdf_token", data.data.token);
-      localStorage.setItem("vdf_user", JSON.stringify(data.data.user));
+      localStorage.setItem("vdf_customer_token", data.data.token);
+      localStorage.setItem("vdf_customer_user", JSON.stringify(data.data.user));
       nav("/customer-app/home");
     } catch { setError("Verification failed"); }
     finally { setLoading(false); }

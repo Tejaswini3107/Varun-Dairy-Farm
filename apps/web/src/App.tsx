@@ -24,7 +24,7 @@ import CustomerLogin from "./pages/customer/CustomerLogin";
 import CustomerApp from "./pages/customer/CustomerApp";
 
 function AdminGuard() {
-  const user = (() => { try { return JSON.parse(localStorage.getItem("vdf_user") ?? "null"); } catch { return null; } })();
+  const user = (() => { try { return JSON.parse(localStorage.getItem("vdf_admin_user") ?? "null"); } catch { return null; } })();
   if (!user || !["admin", "manager"].includes(user.role)) return <Navigate to="/admin-login" replace />;
   return <Outlet />;
 }

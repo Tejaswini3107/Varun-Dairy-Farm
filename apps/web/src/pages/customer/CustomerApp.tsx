@@ -7,7 +7,7 @@ import CustomerWallet from "./CustomerWallet";
 
 export default function CustomerApp() {
   const nav = useNavigate();
-  const user = (() => { try { return JSON.parse(localStorage.getItem("vdf_user") ?? "null"); } catch { return null; } })();
+  const user = (() => { try { return JSON.parse(localStorage.getItem("vdf_customer_user") ?? "null"); } catch { return null; } })();
 
   useEffect(() => {
     if (!user || user.role !== "customer") nav("/customer-login");

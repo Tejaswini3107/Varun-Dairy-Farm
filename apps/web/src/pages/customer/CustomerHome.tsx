@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
-function authH() { const t = localStorage.getItem("vdf_token"); return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) }; }
+function authH() { const t = localStorage.getItem("vdf_customer_token"); return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) }; }
 
 export default function CustomerHome({ user }: { user: any }) {
   const nav = useNavigate();

@@ -4,6 +4,9 @@ import { useNavigate } from "react-router-dom";
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 export default function AdminLogin() {
+  // Clear any stale old key from before the portal split
+  if (typeof window !== "undefined") localStorage.removeItem("vdf_token");
+
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [devOtp, setDevOtp] = useState<string | null>(null);
@@ -40,8 +43,8 @@ export default function AdminLogin() {
       if (!["admin", "manager"].includes(data.data.user.role)) {
         setError("This portal is for admins only."); return;
       }
-      localStorage.setItem("vdf_token", data.data.token);
-      localStorage.setItem("vdf_user", JSON.stringify(data.data.user));
+      localStorage.setItem("vdf_admin_token", data.data.token);
+      localStorage.setItem("vdf_admin_user", JSON.stringify(data.data.user));
       nav("/");
     } catch { setError("Verification failed"); }
     finally { setLoading(false); }

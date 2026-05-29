@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
-function authH() { const t = localStorage.getItem("vdf_token"); return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) }; }
+function authH() { const t = localStorage.getItem("vdf_delivery_token"); return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) }; }
 
 export default function DeliveryCollect() {
   const [orders, setOrders] = useState<any[]>([]);

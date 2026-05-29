@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
-function authH() { const t = localStorage.getItem("vdf_token"); return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) }; }
+function authH() { const t = localStorage.getItem("vdf_customer_token"); return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) }; }
 
 export default function CustomerWallet() {
   const [customer, setCustomer] = useState<any>(null);
   const [txns, setTxns] = useState<any[]>([]);
-  const user = (() => { try { return JSON.parse(localStorage.getItem("vdf_user") ?? "{}"); } catch { return {}; } })();
+  const user = (() => { try { return JSON.parse(localStorage.getItem("vdf_customer_user") ?? "{}"); } catch { return {}; } })();
 
   useEffect(() => {
     if (!user?.customerId) return;

@@ -41,8 +41,8 @@ export default function DeliveryLogin() {
       if (data.data.user.role !== "delivery_staff") {
         setError("This portal is for delivery staff only. Use the Customer App instead."); return;
       }
-      localStorage.setItem("vdf_token", data.data.token);
-      localStorage.setItem("vdf_user", JSON.stringify(data.data.user));
+      localStorage.setItem("vdf_delivery_token", data.data.token);
+      localStorage.setItem("vdf_delivery_user", JSON.stringify(data.data.user));
       nav("/delivery-app/route");
     } catch { setError("Verification failed"); }
     finally { setLoading(false); }
