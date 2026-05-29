@@ -62,11 +62,23 @@ authRouter.post("/verify-otp", async (req, res, next) => {
 
     await db.otpCode.update({ where: { id: otp.id }, data: { used: true } });
 
+    const [customer, staff] = await Promise.all([
+      db.customer.findUnique({ where: { userId: user.id }, select: { id: true } }),
+      db.staff.findUnique({ where: { userId: user.id }, select: { id: true } }),
+    ]);
+
     const token = await signToken(user.id);
     res.json({
       data: {
         token,
-        user: { id: user.id, name: user.name, phone: user.phone, role: user.role },
+        user: {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          role: user.role,
+          customerId: customer?.id ?? null,
+          staffId: staff?.id ?? null,
+        },
       },
     });
   } catch (err) {

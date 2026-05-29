@@ -87,9 +87,16 @@ ordersRouter.post("/generate", requireRole("admin", "manager"), async (_req, res
 });
 
 // POST /orders/generate-for-customer — generate today's order for a single customer
-ordersRouter.post("/generate-for-customer", async (req, res, next) => {
+ordersRouter.post("/generate-for-customer", async (req: any, res, next) => {
   try {
-    const { customerId } = z.object({ customerId: z.string() }).parse(req.body);
+    // Accept customerId from body OR fall back to JWT claim (so customer portal works with JWT alone)
+    const bodyId = req.body?.customerId;
+    const jwtId = req.user?.customerId;
+    const customerId = bodyId ?? jwtId;
+    if (!customerId) {
+      res.status(400).json({ error: "customerId required" });
+      return;
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
