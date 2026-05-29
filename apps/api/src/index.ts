@@ -15,6 +15,7 @@ import { reportsRouter } from "./routes/reports";
 import { staffRouter } from "./routes/staff";
 import { subscriptionsRouter } from "./routes/subscriptions";
 import { webhooksRouter } from "./routes/webhooks";
+import { dashboardRouter } from "./routes/dashboard";
 import { errorHandler } from "./middleware/error";
 import { startJobWorkers } from "./jobs/workers";
 
@@ -49,6 +50,7 @@ app.use(
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/auth", authRouter);
+app.use("/dashboard", dashboardRouter);
 app.use("/customers", customersRouter);
 app.use("/orders", ordersRouter);
 app.use("/delivery", deliveryRouter);

@@ -1,10 +1,10 @@
-import { Router } from "express";
+import { Router, type Router as ExpressRouter } from "express";
 import { z } from "zod";
 import { db } from "@varun/database";
 import { signToken } from "../middleware/auth";
 import { generateOtp, sendOtp } from "../services/notifications";
 
-export const authRouter = Router();
+export const authRouter: ExpressRouter = Router();
 
 const phoneSchema = z.object({ phone: z.string().regex(/^[6-9]\d{9}$/) });
 const verifySchema = z.object({ phone: z.string(), code: z.string().length(4) });
@@ -72,6 +72,23 @@ authRouter.post("/verify-otp", async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// GET /auth/dev-otp/:phone — DEV ONLY: returns latest OTP without WhatsApp
+authRouter.get("/dev-otp/:phone", async (req, res, next) => {
+  if (process.env.NODE_ENV !== "development") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  try {
+    const user = await db.user.findUnique({ where: { phone: req.params.phone } });
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    const otp = await db.otpCode.findFirst({
+      where: { userId: user.id, used: false, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: "desc" },
+    });
+    res.json({ data: { code: otp?.code ?? null } });
+  } catch (err) { next(err); }
 });
 
 // POST /auth/update-fcm-token

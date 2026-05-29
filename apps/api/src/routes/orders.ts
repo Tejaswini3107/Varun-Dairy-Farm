@@ -80,7 +80,69 @@ ordersRouter.get("/today", async (_req, res, next) => {
 ordersRouter.post("/generate", requireRole("admin", "manager"), async (_req, res, next) => {
   try {
     const count = await generateDailyOrders();
-    res.json({ message: `Generated ${count} orders` });
+    res.json({ message: `Generated ${count} orders`, count });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /orders/generate-for-customer — generate today's order for a single customer
+ordersRouter.post("/generate-for-customer", async (req, res, next) => {
+  try {
+    const { customerId } = z.object({ customerId: z.string() }).parse(req.body);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const existing = await db.order.findFirst({ where: { customerId, date: { gte: today, lt: tomorrow } } });
+    if (existing) {
+      const full = await db.order.findUnique({
+        where: { id: existing.id },
+        include: { items: { include: { product: true } }, customer: { include: { user: { select: { name: true } } } } },
+      });
+      res.json({ data: full, created: false });
+      return;
+    }
+
+    const subs = await db.subscription.findMany({
+      where: { customerId, status: "active" },
+      include: { product: true, customer: true },
+    });
+
+    if (!subs.length) { res.status(400).json({ error: "No active subscriptions" }); return; }
+
+    const items = subs.map(s => ({
+      productId: s.productId,
+      quantity: s.quantity,
+      unitPrice: s.product.pricePerUnit,
+      totalPrice: s.quantity * s.product.pricePerUnit,
+    }));
+    const totalAmount = items.reduce((sum, i) => sum + i.totalPrice, 0);
+    const otp = Array.from({ length: 4 }, () => Math.floor(Math.random() * 10)).join("");
+
+    const order = await db.order.create({
+      data: { customerId, routeId: subs[0].customer.routeId, totalAmount, otp, date: today, items: { create: items } },
+      include: { items: { include: { product: true } }, customer: { include: { user: { select: { name: true } } } } },
+    });
+
+    res.status(201).json({ data: order, created: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /orders/:id/assign — assign order to a delivery agent
+ordersRouter.patch("/:id/assign", requireRole("admin", "manager"), async (req, res, next) => {
+  try {
+    const { deliveryAgentId } = z.object({ deliveryAgentId: z.string() }).parse(req.body);
+    const order = await db.order.update({
+      where: { id: req.params.id },
+      data: { deliveryAgentId, status: "assigned" },
+      include: { customer: { include: { user: { select: { name: true } } } }, items: { include: { product: true } } },
+    });
+    res.json({ data: order });
   } catch (err) {
     next(err);
   }

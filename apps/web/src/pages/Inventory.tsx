@@ -1,46 +1,47 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import type { InventoryItem } from "@varun/shared";
+import { Modal, Field, inputStyle, selectStyle } from "@/components/ui/Modal";
 
-const MOCK: InventoryItem[] = [
-  { id: "1", productId: "p1", product: { id: "p1", name: "Toned Milk", unit: "L", pricePerUnit: 48, category: "milk", isActive: true }, batchNumber: "B-2261", quantity: 200, capacity: 620, status: "low", reorderLevel: 200, lastUpdated: new Date().toISOString() },
-  { id: "2", productId: "p2", product: { id: "p2", name: "Curd", unit: "cup", pricePerUnit: 40, category: "curd", isActive: true }, batchNumber: "B-2258", quantity: 410, capacity: 560, status: "healthy", reorderLevel: 100, lastUpdated: new Date().toISOString() },
-  { id: "3", productId: "p3", product: { id: "p3", name: "Ghee · 500 ml", unit: "tin", pricePerUnit: 320, category: "ghee", isActive: true }, batchNumber: "B-2240", quantity: 12, capacity: 140, status: "critical", reorderLevel: 20, lastUpdated: new Date().toISOString() },
-  { id: "4", productId: "p4", product: { id: "p4", name: "Paneer", unit: "block", pricePerUnit: 80, category: "paneer", isActive: true }, batchNumber: "B-2241", quantity: 64, capacity: 140, expiryDate: new Date(Date.now() + 86400000).toISOString(), status: "expiring", reorderLevel: 30, lastUpdated: new Date().toISOString() },
-  { id: "5", productId: "p5", product: { id: "p5", name: "Packaging", unit: "units", pricePerUnit: 0, category: "other", isActive: true }, batchNumber: "PKG-01", quantity: 8800, capacity: 10000, status: "healthy", reorderLevel: 1000, lastUpdated: new Date().toISOString() },
+const catIcon: Record<string, string> = { milk: "ti-bottle", curd: "ti-bowl", ghee: "ti-droplet", paneer: "ti-cheese", other: "ti-package" };
+const catBg: Record<string, string> = { milk: "bg-[var(--blue-soft)] text-[var(--blue-ink)]", curd: "bg-[var(--green-soft)] text-[var(--green-ink)]", ghee: "bg-[var(--amber-soft)] text-[var(--amber-ink)]", paneer: "bg-[var(--amber-soft)] text-[var(--amber-ink)]", other: "bg-[var(--surface-2)] text-[var(--muted)]" };
+const statusCfg: Record<string, { v: "green" | "amber" | "red" | "gray"; label: string }> = { healthy: { v: "green", label: "Healthy" }, low: { v: "amber", label: "Low" }, critical: { v: "red", label: "Critical" }, expiring: { v: "amber", label: "Expiring" } };
+const barColor = (s: string) => s === "critical" ? "var(--red)" : s === "low" || s === "expiring" ? "var(--amber)" : "var(--green)";
+
+const PRODUCTS = [
+  { id: "prod_milk", name: "Toned Milk" },
+  { id: "prod_curd", name: "Curd" },
+  { id: "prod_ghee", name: "Ghee 500ml" },
+  { id: "prod_paneer", name: "Paneer" },
 ];
 
-const statusConfig: Record<string, { badge: "green" | "amber" | "red" | "gray"; label: string }> = {
-  healthy: { badge: "green", label: "Healthy" },
-  low: { badge: "amber", label: "Low" },
-  critical: { badge: "red", label: "Critical" },
-  expiring: { badge: "amber", label: "Expiring" },
-};
-
-const catIcon: Record<string, string> = {
-  milk: "ti-bottle", curd: "ti-bowl", ghee: "ti-droplet", paneer: "ti-cheese", other: "ti-package",
-};
-const catBg: Record<string, string> = {
-  milk: "bg-[var(--blue-soft)] text-[var(--blue-ink)]",
-  curd: "bg-[var(--green-soft)] text-[var(--green-ink)]",
-  ghee: "bg-[var(--amber-soft)] text-[var(--amber-ink)]",
-  paneer: "bg-[var(--amber-soft)] text-[var(--amber-ink)]",
-  other: "bg-[var(--surface-2)] text-[var(--muted)]",
-};
-
 export default function Inventory() {
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ productId: "prod_milk", batchNumber: "", quantity: "", capacity: "", reorderLevel: "", expiryDate: "" });
+  const [formErr, setFormErr] = useState("");
+  const qc = useQueryClient();
+
   const { data } = useQuery({
     queryKey: ["inventory"],
-    queryFn: () => api.get<{ data: InventoryItem[] }>("/inventory"),
-    placeholderData: { data: MOCK },
+    queryFn: () => api.get<{ data: any[] }>("/inventory"),
+    refetchInterval: 10000,
   });
 
+  const addStock = useMutation({
+    mutationFn: (body: any) => api.post("/inventory", body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); setShowAdd(false); setForm({ productId: "prod_milk", batchNumber: "", quantity: "", capacity: "", reorderLevel: "", expiryDate: "" }); },
+    onError: (e: Error) => setFormErr(e.message),
+  });
+
+  function handleAdd() {
+    if (!form.batchNumber || !form.quantity || !form.capacity) { setFormErr("Batch number, quantity and capacity are required"); return; }
+    addStock.mutate({ ...form, quantity: Number(form.quantity), capacity: Number(form.capacity), reorderLevel: Number(form.reorderLevel || 20) });
+  }
+
   const items = data?.data ?? [];
-  const pct = (qty: number, cap: number) => Math.round((qty / cap) * 100);
-  const barColor = (s: string) => s === "critical" ? "var(--red)" : s === "low" || s === "expiring" ? "var(--amber)" : "var(--green)";
 
   return (
     <div className="animate-fade">
@@ -50,16 +51,21 @@ export default function Inventory() {
           <p className="text-[13px] text-[var(--muted)] mt-0.5">Live stock across products, packaging &amp; batches</p>
         </div>
         <div className="flex items-center gap-2.5">
-          <Button><i className="ti ti-history" /> Movement log</Button>
-          <Button variant="primary"><i className="ti ti-plus" /> Purchase entry</Button>
+          <Button onClick={() => setShowAdd(true)} variant="primary"><i className="ti ti-plus" /> Purchase entry</Button>
         </div>
       </div>
 
+      {items.length === 0 && (
+        <div className="card p-8 text-center text-[var(--muted)] text-[13px]">
+          No inventory records. Click <b>Purchase entry</b> to add stock.
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-4">
-        {items.map((item) => {
+        {items.map((item: any) => {
           const cat = item.product?.category ?? "other";
-          const p = pct(item.quantity, item.capacity);
-          const sc = statusConfig[item.status] ?? { badge: "gray" as const, label: item.status };
+          const pct = item.capacity > 0 ? Math.round((item.quantity / item.capacity) * 100) : 0;
+          const sc = statusCfg[item.status] ?? { v: "gray" as const, label: item.status };
           return (
             <Card key={item.id} className="p-[17px]">
               <div className="flex items-center gap-3 mb-3.5">
@@ -72,21 +78,57 @@ export default function Inventory() {
                 </div>
               </div>
               <div className="h-1.5 rounded-full bg-[var(--surface-2)] overflow-hidden mb-3">
-                <div className="h-full rounded-full transition-all" style={{ width: `${p}%`, background: barColor(item.status) }} />
+                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor(item.status) }} />
               </div>
               <div className="flex items-center justify-between text-[12px] text-[var(--muted)]">
-                <span><b className="text-[var(--ink)]">{item.quantity.toLocaleString("en-IN")}</b> / {item.capacity.toLocaleString("en-IN")} {item.product?.unit}</span>
-                <Badge variant={sc.badge}>{sc.label}</Badge>
+                <span><b className="text-[var(--ink)]">{item.quantity}</b> / {item.capacity} {item.product?.unit}</span>
+                <Badge variant={sc.v}>{sc.label}</Badge>
               </div>
               {item.expiryDate && (
                 <div className="mt-2 text-[11.5px] text-[var(--amber-ink)]">
-                  <i className="ti ti-clock text-xs" /> Expires {new Date(item.expiryDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                  <i className="ti ti-clock text-xs" /> Exp {new Date(item.expiryDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                 </div>
               )}
             </Card>
           );
         })}
       </div>
+
+      {showAdd && (
+        <Modal title="New purchase entry" onClose={() => { setShowAdd(false); setFormErr(""); }}>
+          <Field label="Product">
+            <select style={selectStyle} value={form.productId} onChange={e => setForm(f => ({ ...f, productId: e.target.value }))}>
+              {PRODUCTS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Batch number">
+            <input style={inputStyle} value={form.batchNumber} onChange={e => setForm(f => ({ ...f, batchNumber: e.target.value }))} placeholder="e.g. B-2280" autoFocus />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Quantity received">
+              <input style={inputStyle} type="number" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} placeholder="500" />
+            </Field>
+            <Field label="Total capacity">
+              <input style={inputStyle} type="number" value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: e.target.value }))} placeholder="620" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Reorder level">
+              <input style={inputStyle} type="number" value={form.reorderLevel} onChange={e => setForm(f => ({ ...f, reorderLevel: e.target.value }))} placeholder="100" />
+            </Field>
+            <Field label="Expiry date (optional)">
+              <input style={inputStyle} type="date" value={form.expiryDate} onChange={e => setForm(f => ({ ...f, expiryDate: e.target.value }))} />
+            </Field>
+          </div>
+          {formErr && <p style={{ color: "var(--red)", fontSize: 13, marginBottom: 10 }}>{formErr}</p>}
+          <div className="flex gap-2 mt-2">
+            <Button className="flex-1" onClick={() => setShowAdd(false)}>Cancel</Button>
+            <Button variant="primary" className="flex-1" onClick={handleAdd} disabled={addStock.isPending}>
+              {addStock.isPending ? "Adding…" : "Add stock"}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

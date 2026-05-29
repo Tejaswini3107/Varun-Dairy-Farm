@@ -4,17 +4,18 @@
     "module": "commonjs",
     "lib": ["ES2022"],
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "../..",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "declaration": true,
+    "ignoreDeprecations": "5.0",
+    "baseUrl": "../..",
     "paths": {
-      "@varun/shared": ["../../packages/shared/src/index.ts"],
-      "@varun/database": ["../../packages/database/src/index.ts"]
+      "@varun/shared": ["packages/shared/src/index.ts"],
+      "@varun/database": ["packages/database/src/index.ts"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "../../packages/shared/src", "../../packages/database/src"],
   "exclude": ["node_modules", "dist"]
 }

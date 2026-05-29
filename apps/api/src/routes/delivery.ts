@@ -40,7 +40,7 @@ deliveryRouter.get("/routes", async (_req, res, next) => {
   }
 });
 
-// GET /delivery/my-route — agent's stops for today
+// GET /delivery/my-route — agent's stops for today (falls back to route-based lookup)
 deliveryRouter.get("/my-route", async (req: AuthRequest, res, next) => {
   try {
     const staffId = req.user?.staffId;
@@ -54,35 +54,54 @@ deliveryRouter.get("/my-route", async (req: AuthRequest, res, next) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // Find agent's assigned route
+    const staffRoute = await db.route.findFirst({ where: { agentId: staffId } });
+
+    const where: any = {
+      date: { gte: today, lt: tomorrow },
+      status: { notIn: ["cancelled"] },
+    };
+
+    // If agent is assigned to a route, show all orders for that route
+    // Otherwise, show orders directly assigned to this agent
+    if (staffRoute) {
+      where.routeId = staffRoute.id;
+    } else {
+      where.deliveryAgentId = staffId;
+    }
+
     const orders = await db.order.findMany({
-      where: {
-        deliveryAgentId: staffId,
-        date: { gte: today, lt: tomorrow },
-        status: { notIn: ["cancelled"] },
-      },
+      where,
       include: {
         customer: {
           include: {
             user: { select: { name: true, phone: true } },
-            route: { select: { name: true } },
+            route: { select: { name: true, area: true } },
           },
         },
         items: { include: { product: true } },
       },
-      orderBy: { stopSequence: "asc" },
+      orderBy: [{ stopSequence: "asc" }, { createdAt: "asc" }],
     });
 
-    const totalCollection = orders
+    // Assign sequential stop numbers if missing
+    const ordersWithStops = orders.map((o, i) => ({
+      ...o,
+      stopSequence: o.stopSequence ?? i + 1,
+    }));
+
+    const totalCollection = ordersWithStops
       .filter((o) => o.status === "delivered")
       .reduce((sum, o) => sum + (o.collectedAmount ?? o.totalAmount), 0);
 
     res.json({
       data: {
-        orders,
+        orders: ordersWithStops,
+        route: staffRoute,
         summary: {
-          total: orders.length,
-          done: orders.filter((o) => o.status === "delivered").length,
-          pending: orders.filter((o) => o.status !== "delivered" && o.status !== "failed").length,
+          total: ordersWithStops.length,
+          done: ordersWithStops.filter((o) => o.status === "delivered").length,
+          pending: ordersWithStops.filter((o) => o.status !== "delivered" && o.status !== "failed").length,
           totalCollection,
         },
       },
@@ -90,6 +109,18 @@ deliveryRouter.get("/my-route", async (req: AuthRequest, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// GET /delivery/order-otp/:id — DEV ONLY: get OTP for an order
+deliveryRouter.get("/order-otp/:id", async (req, res, next) => {
+  if (process.env.NODE_ENV !== "development") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  try {
+    const order = await db.order.findUnique({ where: { id: req.params.id }, select: { otp: true } });
+    res.json({ data: { otp: order?.otp ?? null } });
+  } catch (err) { next(err); }
 });
 
 // PATCH /delivery/routes/:id/start

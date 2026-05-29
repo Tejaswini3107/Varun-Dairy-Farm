@@ -82,13 +82,30 @@ staffRouter.post("/", async (req, res, next) => {
 staffRouter.patch("/:id/assign-route", async (req, res, next) => {
   try {
     const { routeId } = z.object({ routeId: z.string() }).parse(req.body);
-    await db.route.update({ where: { id: routeId }, data: { agentId: req.params.id } });
+    // Unassign previous route for this agent
+    await db.route.updateMany({ where: { agentId: req.params.id }, data: { agentId: null } });
+    // Assign new route
+    await db.route.update({ where: { id: routeId }, data: { agentId: req.params.id, status: "in_progress" } });
+    // Assign all today's orders on this route to agent
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     await db.order.updateMany({
-      where: { routeId, status: "pending" },
-      data: { deliveryAgentId: req.params.id, status: "assigned" },
+      where: { routeId, status: { in: ["pending", "assigned"] }, date: { gte: today } },
+      data: { deliveryAgentId: req.params.id, status: "out_for_delivery" },
     });
-    res.json({ message: "Route assigned" });
+    res.json({ message: "Route assigned and orders dispatched" });
   } catch (err) {
     next(err);
   }
+});
+
+// GET /staff/routes — all routes with agent assignments
+staffRouter.get("/routes", async (_req, res, next) => {
+  try {
+    const routes = await db.route.findMany({
+      include: { agent: { include: { user: { select: { name: true } } } } },
+      orderBy: { name: "asc" },
+    });
+    res.json({ data: routes });
+  } catch (err) { next(err); }
 });
