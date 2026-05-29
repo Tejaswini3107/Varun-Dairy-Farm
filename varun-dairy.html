@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Varun Dairy Farm — Operations Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#1565d8;--blue-600:#1257bf;--blue-50:#e9f1fd;--blue-100:#d4e4fb;
+  --green:#13a06a;--green-50:#e6f6ef;--green-100:#c9ecdb;
+  --amber:#e09a2d;--amber-50:#fbf2e0;--red:#e0564b;--red-50:#fbe9e7;--violet:#6d5ae0;
+  --bg:#eef3fa;--surface:#ffffff;--surface-2:#f7faff;--ink:#0e1b2e;--ink-2:#3a4a60;--muted:#7686a0;
+  --line:#e4ecf6;--line-2:#eef3fa;
+  --r-s:10px;--r-m:14px;--r-l:20px;--r-xl:26px;
+  --sh-s:0 1px 2px rgba(16,30,54,.05);
+  --sh-m:0 2px 4px rgba(16,30,54,.04),0 12px 28px -14px rgba(16,30,54,.18);
+  --sh-l:0 30px 60px -28px rgba(16,30,54,.32);
+  --grad-blue:linear-gradient(135deg,#1d72ee,#1257bf);
+  --grad-green:linear-gradient(135deg,#1bb377,#0f8a5b);
+}
+body.dark{
+  --blue:#5b9bff;--blue-600:#79adff;--blue-50:#16243d;--blue-100:#1d3052;
+  --green:#3cce96;--green-50:#11past;--green-50:#10261d;--green-100:#163528;
+  --amber:#e7b25a;--amber-50:#2c2410;--red:#f0796e;--red-50:#2e1815;--violet:#9a8af0;
+  --bg:#0a1120;--surface:#111c30;--surface-2:#0e1829;--ink:#eaf1fb;--ink-2:#b3c2d8;--muted:#7e8ea8;
+  --line:#1d2b44;--line-2:#172339;
+  --sh-s:0 1px 2px rgba(0,0,0,.3);--sh-m:0 2px 4px rgba(0,0,0,.25),0 14px 30px -16px rgba(0,0,0,.6);--sh-l:0 30px 70px -28px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{font-family:"Hanken Grotesk",sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s;}
+.serif,.display{font-family:"Sora",sans-serif;}
+.mono{font-family:"JetBrains Mono",monospace;}
+::-webkit-scrollbar{width:9px;height:9px;}::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px;}::-webkit-scrollbar-track{background:transparent;}
+
+/* APP BAR */
+.appbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 22px;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand .logo{width:42px;height:42px;border-radius:13px;background:var(--grad-blue);display:grid;place-items:center;box-shadow:0 8px 18px -8px var(--blue);position:relative;overflow:hidden;}
+.brand .logo svg{width:24px;height:24px;color:#fff;position:relative;z-index:1;}
+.brand .logo::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 70% 20%,rgba(255,255,255,.35),transparent 55%);}
+.brand h1{font-family:"Sora";font-size:18px;font-weight:700;margin:0;letter-spacing:-.4px;line-height:1;}
+.brand .sub{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.02em;}
+.appbar-mid{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px;gap:3px;box-shadow:var(--sh-s);flex-wrap:wrap;}
+.appbar-mid button{font-family:inherit;font-weight:600;font-size:13px;border:0;background:transparent;color:var(--muted);padding:8px 15px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:.2s;white-space:nowrap;}
+.appbar-mid button svg{width:15px;height:15px;}
+.appbar-mid button.on{background:var(--blue);color:#fff;box-shadow:0 6px 14px -7px var(--blue);}
+.appbar-right{display:flex;align-items:center;gap:10px;}
+.theme-btn{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;display:grid;place-items:center;box-shadow:var(--sh-s);}
+.theme-btn svg{width:18px;height:18px;}
+.shell{max-width:1340px;margin:0 auto;padding:22px;}
+.modeview{display:none;animation:fade .4s ease;}.modeview.on{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.kbd{font-family:"JetBrains Mono";font-size:11px;color:var(--muted);}
+
+/* BROWSER FRAME */
+.browser{border:1px solid var(--line);border-radius:var(--r-xl);overflow:hidden;box-shadow:var(--sh-l);background:var(--surface);}
+.bbar{display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--surface-2);border-bottom:1px solid var(--line);}
+.bbar .dots{display:flex;gap:6px}.bbar .dots i{width:11px;height:11px;border-radius:50%;display:block}
+.bbar .dots i:nth-child(1){background:#e0756b}.bbar .dots i:nth-child(2){background:#e7b45a}.bbar .dots i:nth-child(3){background:#5cc08e}
+.bbar .url{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:6px 14px;font-size:12px;color:var(--muted);font-family:"JetBrains Mono";text-align:center;}
+.alayout{display:grid;grid-template-columns:236px 1fr;min-height:760px;position:relative;}
+@media(max-width:920px){.alayout{grid-template-columns:1fr;}.aside{position:absolute;inset:0 auto 0 0;width:236px;z-index:30;transform:translateX(-100%);transition:.3s;}.aside.open{transform:none;box-shadow:0 0 0 3000px rgba(0,0,0,.4);}}
+.aside{background:var(--surface);border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:2px;}
+.aside .ab{display:flex;align-items:center;gap:10px;padding:4px 8px 14px;}
+.aside .ab .lg{width:34px;height:34px;border-radius:10px;background:var(--grad-blue);display:grid;place-items:center;}.aside .ab .lg svg{width:18px;height:18px;color:#fff;}
+.aside .ab b{font-family:"Sora";font-size:14.5px;font-weight:700;line-height:1;}.aside .ab small{display:block;color:var(--muted);font-size:10.5px;font-weight:600;margin-top:2px;}
+.nsec{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:14px 8px 6px;}
+.nav{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--ink-2);cursor:pointer;transition:.16s;}
+.nav svg{width:18px;height:18px;flex:0 0 18px;opacity:.8;}
+.nav:hover{background:var(--surface-2);}
+.nav.on{background:var(--blue-50);color:var(--blue);}.nav.on svg{opacity:1;}
+.nav .tag{margin-left:auto;background:var(--red);color:#fff;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;}
+.nav .tag.g{background:var(--green);}
+.aside .who{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:13px;background:var(--surface-2);}
+.aside .who .av{width:34px;height:34px;border-radius:50%;background:var(--grad-green);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;}
+.aside .who b{font-size:12.5px;}.aside .who small{display:block;color:var(--muted);font-size:11px;}
+
+.amain{display:flex;flex-direction:column;min-width:0;}
+.topbar{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:20;}
+.burger{display:none;background:none;border:0;color:var(--ink);cursor:pointer;}.burger svg{width:22px;height:22px;}
+@media(max-width:920px){.burger{display:block;}}
+.searchbar{flex:1;max-width:420px;display:flex;align-items:center;gap:9px;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:9px 13px;color:var(--muted);font-size:13px;}
+.searchbar svg{width:16px;height:16px;}.searchbar input{border:0;background:transparent;outline:none;font-family:inherit;font-size:13px;color:var(--ink);width:100%;}
+.tb-actions{margin-left:auto;display:flex;align-items:center;gap:9px;}
+.ib{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;display:grid;place-items:center;position:relative;}.ib svg{width:17px;height:17px;}
+.ib .d{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--red);border:2px solid var(--surface);}
+.tb-prof{display:flex;align-items:center;gap:9px;padding:5px 12px 5px 5px;border:1px solid var(--line);border-radius:999px;cursor:pointer;}
+.tb-prof .av{width:30px;height:30px;border-radius:50%;background:var(--grad-blue);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;}
+.tb-prof b{font-size:12.5px;}@media(max-width:560px){.tb-prof b,.searchbar{display:none;}.searchbar{flex:0;}}
+.page{display:none;padding:22px 24px 36px;animation:fade .35s ease;}.page.on{display:block;}
+@media(max-width:560px){.page{padding:18px 16px 30px;}}
+.phead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px;}
+.phead h2{font-family:"Sora";font-size:24px;font-weight:700;margin:0;letter-spacing:-.5px;}
+.phead .pcrumb{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);font-weight:700;margin-bottom:4px;}
+.phead p{margin:5px 0 0;color:var(--muted);font-size:13.5px;}
+.pacts{display:flex;gap:9px;flex-wrap:wrap;}
+.btn{font-family:inherit;font-weight:600;font-size:13px;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.18s;}
+.btn svg{width:15px;height:15px;}.btn:hover{border-color:var(--blue);color:var(--blue);}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff;}.btn.pri:hover{background:var(--blue-600);color:#fff;}
+.btn.grn{background:var(--green);border-color:var(--green);color:#fff;}.btn.grn:hover{filter:brightness(1.05);color:#fff;}
+.btn.sm{padding:6px 11px;font-size:12px;}.btn.gho:hover{background:var(--surface-2);border-color:var(--line);color:var(--ink);}
+
+/* GRID + CARDS */
+.grid{display:grid;gap:16px;}
+.g-kpi{grid-template-columns:repeat(5,1fr);}@media(max-width:1080px){.g-kpi{grid-template-columns:repeat(3,1fr);}}@media(max-width:560px){.g-kpi{grid-template-columns:1fr 1fr;}}
+.g-2{grid-template-columns:1.6fr 1fr;}@media(max-width:980px){.g-2{grid-template-columns:1fr;}}
+.g-2b{grid-template-columns:1fr 1fr;}@media(max-width:760px){.g-2b{grid-template-columns:1fr;}}
+.g-3{grid-template-columns:repeat(3,1fr);}@media(max-width:860px){.g-3{grid-template-columns:1fr 1fr;}}@media(max-width:560px){.g-3{grid-template-columns:1fr;}}
+.g-4{grid-template-columns:repeat(4,1fr);}@media(max-width:900px){.g-4{grid-template-columns:1fr 1fr;}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--sh-m);}
+.card.pad{padding:18px;}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.ch h3{font-family:"Sora";font-size:15.5px;font-weight:600;margin:0;}
+.ch .sub{font-size:12px;color:var(--muted);}
+.link{font-size:12.5px;color:var(--blue);font-weight:600;cursor:pointer;}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:16px;box-shadow:var(--sh-m);position:relative;overflow:hidden;}
+.kpi .ico{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;margin-bottom:12px;}.kpi .ico svg{width:18px;height:18px;}
+.kpi .lab{font-size:12px;color:var(--muted);font-weight:600;}
+.kpi .val{font-family:"Sora";font-size:24px;font-weight:700;letter-spacing:-.5px;margin-top:2px;line-height:1.1;}
+.kpi .delta{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;margin-top:7px;}
+.kpi .delta.up{color:var(--green);}.kpi .delta.dn{color:var(--red);}
+.kpi .spark{position:absolute;right:14px;bottom:14px;width:70px;height:34px;opacity:.9;}
+.i-blue{background:var(--blue-50);color:var(--blue);}.i-green{background:var(--green-50);color:var(--green);}.i-amber{background:var(--amber-50);color:var(--amber);}.i-red{background:var(--red-50);color:var(--red);}.i-violet{background:color-mix(in srgb,var(--violet) 14%,transparent);color:var(--violet);}
+
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;}
+.seg button{font-family:inherit;font-size:12px;font-weight:600;border:0;background:transparent;color:var(--muted);padding:6px 13px;border-radius:999px;cursor:pointer;}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--sh-s);}
+
+/* charts */
+.bars{display:flex;align-items:flex-end;gap:10px;height:160px;padding-top:8px;}
+.bars .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;height:100%;}
+.bars .stack{width:60%;max-width:34px;display:flex;flex-direction:column;justify-content:flex-end;border-radius:6px 6px 0 0;overflow:hidden;height:100%;}
+.bars .stack i{display:block;}
+.bars .lab{font-size:10.5px;color:var(--muted);font-family:"JetBrains Mono";}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);}
+.legend .li{display:flex;align-items:center;gap:6px;font-weight:600;}.legend .sw{width:10px;height:10px;border-radius:3px;}
+.donut-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.prog{height:8px;border-radius:999px;background:var(--line-2);overflow:hidden;}.prog i{display:block;height:100%;border-radius:999px;}
+.rowline{margin-bottom:12px;}.rowline .t{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;}.rowline .t b{font-weight:600;}.rowline .t span{color:var(--muted);font-weight:600;font-family:"JetBrains Mono";}
+
+/* lists / feed */
+.alert{display:flex;align-items:center;gap:12px;padding:11px;border-radius:13px;border:1px solid var(--line);margin-bottom:9px;background:var(--surface-2);}
+.alert .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:0 0 34px;}.alert .ic svg{width:17px;height:17px;}
+.alert h4{margin:0;font-size:13px;font-weight:600;}.alert p{margin:1px 0 0;font-size:11.5px;color:var(--muted);}
+.alert .q{margin-left:auto;text-align:right;}.alert .q b{font-family:"JetBrains Mono";font-size:13px;}.alert .q small{display:block;font-size:10.5px;color:var(--muted);}
+.feed .fi{display:flex;gap:11px;padding:10px 0;border-bottom:1px dashed var(--line);}.feed .fi:last-child{border-bottom:0;}
+.feed .fd{width:9px;height:9px;border-radius:50%;margin-top:5px;flex:0 0 9px;}
+.feed p{margin:0;font-size:12.5px;}.feed small{color:var(--muted);font-size:11px;}
+.route{border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:10px;background:var(--surface-2);}
+.route .rt{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px;}
+.route .rt b{font-size:13.5px;}.route .stops{display:flex;gap:5px;}
+.route .stop{flex:1;height:6px;border-radius:3px;background:var(--line);}.route .stop.done{background:var(--green);}.route .stop.now{background:var(--blue);}
+
+/* tables */
+.tbl-wrap{overflow-x:auto;}
+table.tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.tbl th{text-align:left;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+.tbl td{padding:12px;border-bottom:1px solid var(--line-2);vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:0;}
+.tbl tbody tr{cursor:pointer;transition:.12s;}.tbl tbody tr:hover{background:var(--surface-2);}
+.tbl .num{font-family:"JetBrains Mono";font-weight:600;text-align:right;}
+.cell-prod{display:flex;align-items:center;gap:10px;}
+.pdot{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:14px;flex:0 0 30px;}
+.uc{display:flex;align-items:center;gap:10px;}.uc .av{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:0 0 32px;}
+.badge{font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;}
+.b-green{background:var(--green-50);color:var(--green);}.b-blue{background:var(--blue-50);color:var(--blue);}.b-amber{background:var(--amber-50);color:var(--amber);}.b-red{background:var(--red-50);color:var(--red);}.b-grey{background:var(--surface-2);color:var(--muted);border:1px solid var(--line);}
+.dotb{width:6px;height:6px;border-radius:50%;}
+.filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px;}
+.filters .sel,.filters .fsearch{font-family:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 12px;color:var(--ink);}
+.filters .fsearch{flex:1;min-width:160px;}
+
+/* map */
+.map{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(160deg,var(--blue-50),var(--surface-2));}
+.map svg.base{position:absolute;inset:0;width:100%;height:100%;}
+.mpin{position:absolute;transform:translate(-50%,-100%);z-index:3;cursor:pointer;}
+.mpin svg{width:24px;height:30px;filter:drop-shadow(0 4px 5px rgba(0,0,0,.25));}
+.mpin .lb{position:absolute;left:50%;top:-4px;transform:translate(-50%,-100%);background:var(--ink);color:var(--surface);font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:6px;white-space:nowrap;opacity:0;transition:.15s;}
+.mpin:hover .lb{opacity:1;}
+.maplive{position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:7px;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:11px;font-weight:700;}
+.maplive .pulse{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(19,160,106,.5);animation:pulse 1.8s infinite;}
+@keyframes pulse{70%{box-shadow:0 0 0 9px rgba(19,160,106,0)}100%{box-shadow:0 0 0 0 rgba(19,160,106,0)}}
+
+/* phone */
+.phones{display:flex;gap:46px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+.pcol{display:flex;flex-direction:column;align-items:center;gap:16px;}
+.pnav{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:360px;}
+.pnav button{font-family:inherit;font-size:11.5px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);padding:6px 11px;border-radius:999px;cursor:pointer;}
+.pnav button.on{background:var(--ink);color:var(--surface);border-color:var(--ink);}
+.phone{width:340px;height:716px;background:#0c1322;border-radius:48px;padding:11px;box-shadow:var(--sh-l),0 0 0 2px var(--line);position:relative;}
+body.dark .phone{background:#05080f;}
+.phone::after{content:"";position:absolute;top:18px;left:50%;transform:translateX(-50%);width:118px;height:26px;background:#0c1322;border-radius:0 0 16px 16px;z-index:9;}
+body.dark .phone::after{background:#05080f;}
+.pscreen{width:100%;height:100%;background:var(--bg);border-radius:38px;overflow:hidden;position:relative;}
+.sc{display:none;height:100%;animation:fade .3s;}.sc.on{display:block;}
+.scsroll{height:100%;overflow-y:auto;padding-bottom:74px;}.scsroll::-webkit-scrollbar{display:none;}
+.sbar{display:flex;justify-content:space-between;padding:15px 24px 6px;font-size:12px;font-weight:700;font-family:"JetBrains Mono";}
+.ppad{padding:4px 18px 20px;}
+.ph-h{font-family:"Sora";font-size:21px;font-weight:700;margin:6px 0 2px;letter-spacing:-.3px;}
+.ph-s{font-size:12.5px;color:var(--muted);margin:0 0 14px;}
+.pback{font-size:13px;color:var(--blue);font-weight:600;cursor:pointer;display:inline-flex;gap:4px;align-items:center;margin-bottom:2px;}
+.ptab{position:absolute;bottom:0;left:0;right:0;height:62px;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;padding-bottom:6px;z-index:7;}
+.ptab a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;font-weight:600;color:var(--muted);cursor:pointer;}.ptab a.on{color:var(--blue);}.ptab svg{width:21px;height:21px;}
+.bigbtn{width:100%;font-family:inherit;font-weight:700;font-size:16px;padding:15px;border-radius:15px;border:0;background:var(--blue);color:#fff;cursor:pointer;box-shadow:0 14px 26px -12px var(--blue);}
+.bigbtn.grn{background:var(--green);box-shadow:0 14px 26px -12px var(--green);}
+.bigbtn.gho{background:transparent;color:var(--ink-2);border:1.5px solid var(--line);box-shadow:none;}
+.tap{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh-s);}
+.tap .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:0 0 42px;}.tap .ic svg{width:21px;height:21px;}
+.tap h4{margin:0;font-size:14px;font-weight:600;}.tap p{margin:2px 0 0;font-size:11.5px;color:var(--muted);}
+.tap .go{margin-left:auto;color:var(--muted);}.tap .go svg{width:18px;height:18px;}
+.otpwrap{display:flex;gap:9px;justify-content:center;margin:14px 0;}
+.otpwrap .o{width:46px;height:54px;border:1.5px solid var(--line);border-radius:13px;display:grid;place-items:center;font-family:"Sora";font-size:24px;font-weight:700;background:var(--surface);}
+.otpwrap .o.f{border-color:var(--blue);color:var(--blue);background:var(--blue-50);}
+.qrbox{width:172px;height:172px;margin:0 auto;border-radius:18px;background:#fff;border:1px solid var(--line);padding:14px;}
+.qrbox svg{width:100%;height:100%;}
+.offline{display:flex;align-items:center;gap:9px;background:var(--amber-50);border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);color:var(--amber);font-size:11.5px;font-weight:700;padding:9px 12px;border-radius:12px;margin-bottom:12px;}
+.offline .d{width:8px;height:8px;border-radius:50%;background:var(--amber);}
+.chat{display:flex;flex-direction:column;gap:9px;}
+.bub{max-width:78%;padding:10px 13px;border-radius:15px;font-size:13px;line-height:1.4;}
+.bub.in{background:var(--surface);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:5px;}
+.bub.out{background:var(--blue);color:#fff;align-self:flex-end;border-bottom-right-radius:5px;}
+.herocard{border-radius:20px;padding:18px;color:#fff;background:var(--grad-blue);position:relative;overflow:hidden;box-shadow:0 16px 30px -16px var(--blue);}
+.herocard.g{background:var(--grad-green);box-shadow:0 16px 30px -16px var(--green);}
+.herocard::after{content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.12);}
+.herocard .lab{font-size:11.5px;opacity:.9;font-weight:600;}.herocard .big{font-family:"Sora";font-size:30px;font-weight:700;margin-top:2px;letter-spacing:-.5px;}
+.qrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:14px;}
+.qa{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center;cursor:pointer;box-shadow:var(--sh-s);}
+.qa .ic{width:38px;height:38px;border-radius:11px;margin:0 auto 7px;display:grid;place-items:center;}.qa .ic svg{width:19px;height:19px;}.qa span{font-size:11px;font-weight:600;}
+.stepper{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:10px 13px;margin-bottom:9px;}
+.stepper .nm{flex:1;}.stepper .nm b{font-size:13.5px;}.stepper .nm small{display:block;font-size:11px;color:var(--muted);}
+.stepper .ct{display:flex;align-items:center;gap:11px;}.stepper .ct button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:16px;cursor:pointer;color:var(--blue);}.stepper .ct b{font-family:"JetBrains Mono";min-width:18px;text-align:center;}
+
+/* design system */
+.ds-sw{height:64px;border-radius:12px;border:1px solid var(--line);margin-bottom:8px;}
+.ds-name{font-size:12px;font-weight:600;}.ds-hex{font-family:"JetBrains Mono";font-size:11px;color:var(--muted);}
+.type-row{display:flex;align-items:baseline;gap:16px;padding:11px 0;border-bottom:1px dashed var(--line);}.type-row .meta{font-family:"JetBrains Mono";font-size:11px;color:var(--muted);width:120px;flex:0 0 120px;}
+
+/* drawer */
+.drawer-bg{position:fixed;inset:0;background:rgba(8,16,30,.5);z-index:90;display:none;animation:fade .25s;}
+.drawer-bg.show{display:block;}
+.drawer{position:fixed;top:0;right:0;height:100%;width:440px;max-width:94vw;background:var(--surface);z-index:95;box-shadow:var(--sh-l);transform:translateX(100%);transition:.32s cubic-bezier(.3,1,.3,1);overflow-y:auto;}
+.drawer.show{transform:none;}
+.drawer-h{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line);padding:18px 20px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;z-index:2;}
+.drawer-h h3{font-family:"Sora";font-size:18px;font-weight:700;margin:0;}.drawer-h .x{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);cursor:pointer;font-size:17px;color:var(--muted);flex:0 0 34px;}
+.drawer-b{padding:18px 20px 30px;}
+.kv{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px dashed var(--line);font-size:13px;}.kv .k{color:var(--muted);font-weight:600;}.kv .v{font-weight:600;text-align:right;}
+.tline{display:flex;gap:11px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:12.5px;}.tline:last-child{border-bottom:0;}.tline .dt{font-family:"JetBrains Mono";font-size:11px;color:var(--muted);flex:0 0 70px;}
+
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(130px);background:var(--ink);color:var(--surface);padding:13px 20px;border-radius:13px;font-size:13.5px;font-weight:600;box-shadow:var(--sh-l);z-index:120;display:flex;align-items:center;gap:9px;transition:.4s cubic-bezier(.2,1,.3,1);}
+.toast svg{width:18px;height:18px;color:var(--green);}.toast.show{transform:translateX(-50%) translateY(0);}
+.foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:24px;line-height:1.6;}.foot b{color:var(--ink-2);}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="currentColor" opacity=".25"/></pattern>
+</defs></svg>
+
+<div class="appbar">
+  <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" fill="none"><path d="M7 3h10l-1 4c2 1 3 3 3 6v6a2 2 0 01-2 2H7a2 2 0 01-2-2v-6c0-3 1-5 3-6L7 3z" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 3l-.6 2.5h7.2L15 3" stroke="#fff" stroke-width="1.3"/></svg></div>
+    <div><h1>Varun Dairy Farm</h1><div class="sub">Operations Platform · Hyderabad</div></div></div>
+  <div class="appbar-mid">
+    <button id="m-admin" class="on" onclick="setMode('admin')"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 20h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Admin Portal</button>
+    <button id="m-staff" onclick="setMode('staff')"><svg viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="18" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 9l3-3M3 14l3-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Delivery Staff App</button>
+    <button id="m-cust" onclick="setMode('cust')"><svg viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="18" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/></svg>Customer App</button>
+    <button id="m-ds" onclick="setMode('ds')"><svg viewBox="0 0 24 24" fill="none"><circle cx="8" cy="8" r="4" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/></svg>Design System</button>
+  </div>
+  <div class="appbar-right"><button class="theme-btn" id="themeBtn" onclick="toggleTheme()"><svg id="themeIcon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button></div>
+</div>
+
+<div class="shell">
+
+<!-- ============ ADMIN PORTAL ============ -->
+<div class="modeview on" id="mode-admin">
+  <div class="browser">
+    <div class="bbar"><div class="dots"><i></i><i></i><i></i></div><div class="url" id="aurl">app.varundairy.in / dashboard</div></div>
+    <div class="alayout">
+      <aside class="aside" id="aside">
+        <div class="ab"><div class="lg"><svg viewBox="0 0 24 24" fill="none"><path d="M7 3h10l-1 4c2 1 3 3 3 6v6a2 2 0 01-2 2H7a2 2 0 01-2-2v-6c0-3 1-5 3-6L7 3z" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div><b>Varun Dairy</b><small>Admin Console</small></div></div>
+        <div class="nsec">Overview</div>
+        <div class="nav on" data-p="dashboard" onclick="aGo('dashboard')"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="3" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="12" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="3" y="16" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.7"/></svg>Dashboard</div>
+        <div class="nsec">Operations</div>
+        <div class="nav" data-p="inventory" onclick="aGo('inventory')"><svg viewBox="0 0 24 24" fill="none"><path d="M3 8l9-5 9 5-9 5-9-5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 8v8l9 5 9-5V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Inventory<span class="tag">3</span></div>
+        <div class="nav" data-p="customers" onclick="aGo('customers')"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M3 19a6 6 0 0112 0M16 6a3 3 0 010 6M21 19a6 6 0 00-4-5.6" stroke="currentColor" stroke-width="1.6"/></svg>Customers</div>
+        <div class="nav" data-p="delivery" onclick="aGo('delivery')"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7" cy="17" r="1.8" stroke="currentColor" stroke-width="1.6"/><circle cx="17" cy="17" r="1.8" stroke="currentColor" stroke-width="1.6"/></svg>Delivery Ops<span class="tag g">live</span></div>
+        <div class="nav" data-p="billing" onclick="aGo('billing')"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 10h18M7 15h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Billing &amp; Payments</div>
+        <div class="nsec">Insights</div>
+        <div class="nav" data-p="reports" onclick="aGo('reports')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 18V9M10 18V5M16 18v-7M22 18H2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Reports &amp; Analytics</div>
+        <div class="who"><div class="av">VK</div><div><b>V. Krishna</b><small>Owner · Admin</small></div></div>
+      </aside>
+
+      <div class="amain">
+        <div class="topbar">
+          <button class="burger" onclick="document.getElementById('aside').classList.toggle('open')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+          <div class="searchbar"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-3-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input placeholder="Search customers, orders, invoices…"></div>
+          <div class="tb-actions">
+            <button class="ib" onclick="toast('Route plan synced')"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-5.5-7-11a7 7 0 1114 0c0 5.5-7 11-7 11z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.2" stroke="currentColor" stroke-width="1.6"/></svg></button>
+            <button class="ib" onclick="toast('3 new notifications')"><span class="d"></span><svg viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6z" stroke="currentColor" stroke-width="1.6"/><path d="M10 20a2 2 0 004 0" stroke="currentColor" stroke-width="1.6"/></svg></button>
+            <div class="tb-prof"><div class="av">VK</div><b>V. Krishna</b></div>
+          </div>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div class="page on" id="p-dashboard">
+          <div class="phead"><div><div class="pcrumb">Tuesday · 28 May 2026</div><h2>Good morning, Krishna 🥛</h2><p>Here's how Varun Dairy is running today across all routes.</p></div>
+            <div class="pacts"><div class="seg"><button class="on">Today</button><button>Week</button><button>Month</button></div><button class="btn pri"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2"/></svg>New order</button></div></div>
+
+          <div class="grid g-kpi" style="margin-bottom:16px">
+            <div class="kpi"><div class="ico i-green"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M8 7h6a2.5 2.5 0 010 5H8m0 0h7a2.5 2.5 0 010 5H8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="lab">Revenue today</div><div class="val">₹84,250</div><div class="delta up">▲ 12.4% vs yest.</div><svg class="spark" viewBox="0 0 70 34"><polyline points="0,26 12,22 24,24 36,14 48,17 60,9 70,6" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round"/></svg></div>
+            <div class="kpi"><div class="ico i-blue"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 8h8M8 12h8M8 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div class="lab">Orders today</div><div class="val">512</div><div class="delta up">▲ 38 new</div><svg class="spark" viewBox="0 0 70 34"><polyline points="0,20 12,22 24,16 36,18 48,12 60,14 70,8" fill="none" stroke="var(--blue)" stroke-width="2.2" stroke-linecap="round"/></svg></div>
+            <div class="kpi"><div class="ico i-violet"><svg viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 1018 0" stroke="currentColor" stroke-width="1.7"/><path d="M3 12a9 9 0 019-9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="lab">Active subscriptions</div><div class="val">438</div><div class="delta up">▲ 6 this week</div></div>
+            <div class="kpi"><div class="ico i-amber"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7" cy="17" r="1.6" stroke="currentColor" stroke-width="1.6"/><circle cx="17" cy="17" r="1.6" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="lab">Deliveries in progress</div><div class="val">217<span style="font-size:13px;color:var(--muted)"> /512</span></div><div class="delta up">42% complete</div></div>
+            <div class="kpi"><div class="ico i-green"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="lab">Collection rate</div><div class="val">96.2%</div><div class="delta dn">▼ ₹3.1k pending</div></div>
+          </div>
+
+          <div class="grid g-2" style="margin-bottom:16px">
+            <div class="card pad"><div class="ch"><div><h3>Revenue analytics</h3><div class="sub">Daily collections · last 14 days</div></div><div class="seg"><button>7D</button><button class="on">14D</button><button>30D</button></div></div>
+              <svg viewBox="0 0 720 240" style="width:100%;height:230px">
+                <defs><linearGradient id="rev" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--blue)" stop-opacity=".22"/><stop offset="1" stop-color="var(--blue)" stop-opacity="0"/></linearGradient></defs>
+                <g stroke="var(--line)" stroke-width="1"><line x1="40" y1="40" x2="710" y2="40"/><line x1="40" y1="100" x2="710" y2="100"/><line x1="40" y1="160" x2="710" y2="160"/><line x1="40" y1="200" x2="710" y2="200"/></g>
+                <g font-family="JetBrains Mono" font-size="10" fill="var(--muted)"><text x="6" y="44">100k</text><text x="6" y="104">75k</text><text x="6" y="164">50k</text><text x="6" y="204">25k</text></g>
+                <polygon fill="url(#rev)" points="40,150 92,132 144,140 196,110 248,120 300,92 352,100 404,74 456,86 508,70 560,58 612,72 664,48 710,40 710,200 40,200"/>
+                <polyline fill="none" stroke="var(--blue)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" points="40,150 92,132 144,140 196,110 248,120 300,92 352,100 404,74 456,86 508,70 560,58 612,72 664,48 710,40"/>
+                <circle cx="710" cy="40" r="5" fill="var(--blue)" stroke="var(--surface)" stroke-width="2.5"/>
+              </svg>
+            </div>
+            <div class="card pad"><div class="ch"><div><h3>Subscription metrics</h3><div class="sub">438 active plans</div></div></div>
+              <div class="donut-row"><svg viewBox="0 0 120 120" style="width:120px;height:120px">
+                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--green)" stroke-width="15" stroke-dasharray="200 89" transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--blue)" stroke-width="15" stroke-dasharray="45 244" stroke-dashoffset="-200" transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--amber)" stroke-width="15" stroke-dasharray="28 261" stroke-dashoffset="-245" transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--red)" stroke-width="15" stroke-dasharray="16 273" stroke-dashoffset="-273" transform="rotate(-90 60 60)"/>
+                <text x="60" y="56" text-anchor="middle" font-family="Sora" font-size="22" font-weight="700" fill="var(--ink)">438</text><text x="60" y="73" text-anchor="middle" font-size="9" fill="var(--muted)">active</text>
+              </svg>
+              <div class="legend" style="flex-direction:column;gap:9px"><div class="li"><span class="sw" style="background:var(--green)"></span>Daily milk · 312</div><div class="li"><span class="sw" style="background:var(--blue)"></span>Alternate day · 71</div><div class="li"><span class="sw" style="background:var(--amber)"></span>Paused · 38</div><div class="li"><span class="sw" style="background:var(--red)"></span>Churn risk · 17</div></div></div>
+            </div>
+          </div>
+
+          <div class="grid g-2" style="margin-bottom:16px">
+            <div class="card pad"><div class="ch"><div><h3>Daily order statistics</h3><div class="sub">Units by product · this week</div></div><div class="legend"><div class="li"><span class="sw" style="background:var(--blue)"></span>Milk</div><div class="li"><span class="sw" style="background:var(--green)"></span>Curd</div><div class="li"><span class="sw" style="background:var(--amber)"></span>Ghee</div><div class="li"><span class="sw" style="background:var(--violet)"></span>Paneer</div></div></div>
+              <div class="bars" id="orderBars"></div>
+            </div>
+            <div class="card pad"><div class="ch"><div><h3>Route optimization</h3><div class="sub">7 routes · auto-sequenced</div></div><button class="btn sm pri" onclick="toast('Routes re-optimised — saved 22 min')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0114-5M20 12a8 8 0 01-14 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M18 2v5h-5M6 22v-5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Optimize</button></div>
+              <div class="route"><div class="rt"><b>R1 · Banjara Hills</b><span class="badge b-green"><span class="dotb" style="background:var(--green)"></span>On time</span></div><div class="stops"><i class="stop done"></i><i class="stop done"></i><i class="stop done"></i><i class="stop now"></i><i class="stop"></i><i class="stop"></i></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:7px"><span>Ravi · 62 stops</span><span class="mono">ETA 9:45 AM</span></div></div>
+              <div class="route"><div class="rt"><b>R3 · Gachibowli</b><span class="badge b-amber"><span class="dotb" style="background:var(--amber)"></span>Delayed 8m</span></div><div class="stops"><i class="stop done"></i><i class="stop done"></i><i class="stop now"></i><i class="stop"></i><i class="stop"></i><i class="stop"></i></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:7px"><span>Suresh · 58 stops</span><span class="mono">ETA 10:10 AM</span></div></div>
+              <div class="route" style="margin-bottom:0"><div class="rt"><b>R5 · Kukatpally</b><span class="badge b-blue"><span class="dotb" style="background:var(--blue)"></span>In transit</span></div><div class="stops"><i class="stop done"></i><i class="stop now"></i><i class="stop"></i><i class="stop"></i><i class="stop"></i><i class="stop"></i></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:7px"><span>Mahesh · 71 stops</span><span class="mono">ETA 10:25 AM</span></div></div>
+            </div>
+          </div>
+
+          <div class="grid g-3">
+            <div class="card pad"><div class="ch"><h3>Low stock alerts</h3><span class="link" onclick="aGo('inventory')">View all</span></div>
+              <div class="alert"><div class="ic i-red"><svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9L2.4 18a2 2 0 001.7 3h15.8a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" stroke="currentColor" stroke-width="1.5"/></svg></div><div><h4>Paneer 200g</h4><p>Batch #PN-2218</p></div><div class="q"><b>14</b><small>units left</small></div></div>
+              <div class="alert"><div class="ic i-amber"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.6"/></svg></div><div><h4>Ghee 1L</h4><p>Expires in 3 days</p></div><div class="q"><b>28</b><small>units left</small></div></div>
+              <div class="alert" style="margin-bottom:0"><div class="ic i-amber"><svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/></svg></div><div><h4>Curd 500g</h4><p>Below reorder level</p></div><div class="q"><b>46</b><small>units left</small></div></div>
+            </div>
+            <div class="card pad"><div class="ch"><h3>Delivery tracking</h3><span class="link" onclick="aGo('delivery')">Open map</span></div>
+              <div class="map" style="height:148px"><svg class="base" viewBox="0 0 300 148" preserveAspectRatio="none"><rect width="100%" height="100%" fill="url(#dots)" color="var(--blue)"/><path d="M20,120 Q100,80 160,110 T290,70" stroke="var(--blue)" stroke-width="2" fill="none" opacity=".4"/><path d="M10,40 Q90,60 180,35 T295,60" stroke="var(--green)" stroke-width="2" fill="none" opacity=".4"/></svg>
+                <div class="maplive"><span class="pulse"></span>5 vans live</div>
+                <div class="mpin" style="left:26%;top:60%"><span class="lb">R1 · Ravi</span><svg viewBox="0 0 24 30"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 18 12 18s12-9 12-18C24 5.4 18.6 0 12 0z" fill="var(--green)"/><circle cx="12" cy="12" r="4.5" fill="#fff"/></svg></div>
+                <div class="mpin" style="left:62%;top:46%"><span class="lb">R5 · Mahesh</span><svg viewBox="0 0 24 30"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 18 12 18s12-9 12-18C24 5.4 18.6 0 12 0z" fill="var(--blue)"/><circle cx="12" cy="12" r="4.5" fill="#fff"/></svg></div>
+                <div class="mpin" style="left:80%;top:64%"><span class="lb">R3 · Suresh</span><svg viewBox="0 0 24 30"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 18 12 18s12-9 12-18C24 5.4 18.6 0 12 0z" fill="var(--amber)"/><circle cx="12" cy="12" r="4.5" fill="#fff"/></svg></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:12px;text-align:center">
+                <div><div class="mono" style="font-size:18px;font-weight:600;color:var(--green)">295</div><small style="color:var(--muted);font-size:11px">Delivered</small></div>
+                <div><div class="mono" style="font-size:18px;font-weight:600;color:var(--blue)">217</div><small style="color:var(--muted);font-size:11px">In transit</small></div>
+                <div><div class="mono" style="font-size:18px;font-weight:600;color:var(--red)">6</div><small style="color:var(--muted);font-size:11px">Missed</small></div>
+              </div>
+            </div>
+            <div class="card pad"><div class="ch"><h3>Activity feed</h3><span class="link">Live</span></div>
+              <div class="feed">
+                <div class="fi"><span class="fd" style="background:var(--green)"></span><div><p><b>Ravi</b> completed Stop #41 (Banjara Hills)</p><small>OTP verified · 2 min ago</small></div></div>
+                <div class="fi"><span class="fd" style="background:var(--blue)"></span><div><p><b>Priya Reddy</b> recharged wallet ₹1,000</p><small>UPI · 6 min ago</small></div></div>
+                <div class="fi"><span class="fd" style="background:var(--amber)"></span><div><p>Low stock: <b>Paneer 200g</b> hit reorder level</p><small>Inventory · 14 min ago</small></div></div>
+                <div class="fi"><span class="fd" style="background:var(--red)"></span><div><p>Missed delivery flagged on <b>R3</b></p><small>Auto-reassigned · 21 min ago</small></div></div>
+                <div class="fi"><span class="fd" style="background:var(--violet)"></span><div><p>New subscription: <b>A. Sharma</b> · Daily milk 1L</p><small>App signup · 33 min ago</small></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INVENTORY -->
+        <div class="page" id="p-inventory">
+          <div class="phead"><div><div class="pcrumb">Operations</div><h2>Inventory Management</h2><p>Stock, batches, expiry &amp; suppliers across all products.</p></div>
+            <div class="pacts"><button class="btn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4M7 9l5-5 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Import</button><button class="btn pri" onclick="toast('Add product form')"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2"/></svg>Add product</button></div></div>
+          <div class="grid g-4" style="margin-bottom:16px" id="invCards"></div>
+          <div class="grid g-2">
+            <div class="card pad"><div class="ch"><div><h3>Batch &amp; expiry tracking</h3><div class="sub">Live stock by batch</div></div><div class="filters" style="margin:0"><select class="sel"><option>All products</option><option>Milk</option><option>Curd</option><option>Ghee</option><option>Paneer</option></select></div></div>
+              <div class="tbl-wrap"><table class="tbl" id="batchTbl"></table></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div class="card pad"><div class="ch"><h3>Spoilage &amp; wastage</h3><span class="link">This month</span></div>
+                <div class="rowline"><div class="t"><b>Milk (returns)</b><span>1.8%</span></div><div class="prog"><i style="width:18%;background:var(--blue)"></i></div></div>
+                <div class="rowline"><div class="t"><b>Curd</b><span>2.4%</span></div><div class="prog"><i style="width:24%;background:var(--green)"></i></div></div>
+                <div class="rowline"><div class="t"><b>Paneer</b><span>3.6%</span></div><div class="prog"><i style="width:36%;background:var(--violet)"></i></div></div>
+                <div class="rowline" style="margin-bottom:0"><div class="t"><b>Ghee</b><span>0.4%</span></div><div class="prog"><i style="width:4%;background:var(--amber)"></i></div></div>
+                <div class="alert" style="margin-top:14px;margin-bottom:0;background:var(--red-50);border-color:color-mix(in srgb,var(--red) 25%,transparent)"><div class="ic i-red"><svg viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div><h4>₹4,180 wasted</h4><p>Mostly expired paneer — tighten Tue/Thu batches</p></div></div>
+              </div>
+              <div class="card pad"><div class="ch"><h3>Suppliers</h3><span class="link">Manage</span></div>
+                <div class="alert"><div class="ic i-blue"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div><h4>Vijaya Farms</h4><p>Raw milk · daily 1,200 L</p></div><span class="badge b-green" style="margin-left:auto">Active</span></div>
+                <div class="alert"><div class="ic i-green"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div><h4>Sangam Dairy Co-op</h4><p>Curd &amp; paneer base</p></div><span class="badge b-green" style="margin-left:auto">Active</span></div>
+                <div class="alert" style="margin-bottom:0"><div class="ic i-amber"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div><h4>Sri Ghee Mills</h4><p>Ghee · weekly</p></div><span class="badge b-amber" style="margin-left:auto">Renewal</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CUSTOMERS -->
+        <div class="page" id="p-customers">
+          <div class="phead"><div><div class="pcrumb">Operations</div><h2>Customer Management</h2><p>450+ customers · subscriptions, wallets, routes &amp; complaints.</p></div>
+            <div class="pacts"><button class="btn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4M7 9l5-5 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Export</button><button class="btn pri"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2"/></svg>Add customer</button></div></div>
+          <div class="grid g-4" style="margin-bottom:16px">
+            <div class="kpi"><div class="lab">Total customers</div><div class="val">452</div><div class="delta up">▲ 9 this week</div></div>
+            <div class="kpi"><div class="lab">Active subscriptions</div><div class="val">438</div><div class="delta up">96.9%</div></div>
+            <div class="kpi"><div class="lab">Paused</div><div class="val">38</div><div class="delta dn">resume in &lt;7d: 21</div></div>
+            <div class="kpi"><div class="lab">Open complaints</div><div class="val">5</div><div class="delta dn">2 overdue</div></div>
+          </div>
+          <div class="card pad">
+            <div class="filters"><div class="fsearch" style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="none" width="15" height="15"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-3-3" stroke="currentColor" stroke-width="1.8"/></svg><input style="border:0;background:transparent;outline:none;font-family:inherit;width:100%;color:var(--ink)" placeholder="Search by name, phone, route…"></div>
+              <select class="sel"><option>All plans</option><option>Daily milk</option><option>Alternate day</option></select>
+              <select class="sel"><option>All routes</option><option>R1 Banjara Hills</option><option>R3 Gachibowli</option></select>
+              <select class="sel"><option>All status</option><option>Active</option><option>Paused</option></select></div>
+            <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>Plan</th><th>Route</th><th class="num">Wallet</th><th>Status</th><th class="num">Last payment</th></tr></thead><tbody id="custTbl"></tbody></table></div>
+          </div>
+        </div>
+
+        <!-- DELIVERY -->
+        <div class="page" id="p-delivery">
+          <div class="phead"><div><div class="pcrumb">Operations · Live</div><h2>Delivery Operations</h2><p>Route planning, sequencing, OTP confirmation &amp; missed-delivery handling.</p></div>
+            <div class="pacts"><button class="btn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8"/></svg>New route</button><button class="btn grn" onclick="toast('Dispatch sheet sent to 5 drivers')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-7-7 16-2-7-7-2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Dispatch all</button></div></div>
+          <div class="grid g-2">
+            <div class="card pad"><div class="ch"><div><h3>Live route map</h3><div class="sub">5 vans · Hyderabad zones</div></div><div class="seg"><button class="on">All</button><button>Delayed</button><button>Missed</button></div></div>
+              <div class="map" style="height:330px"><svg class="base" viewBox="0 0 600 330" preserveAspectRatio="none"><rect width="100%" height="100%" fill="url(#dots)" color="var(--blue)"/>
+                <path d="M40,260 Q180,200 300,240 T580,160" stroke="var(--green)" stroke-width="2.4" fill="none" opacity=".5"/>
+                <path d="M30,90 Q200,140 360,80 T590,120" stroke="var(--blue)" stroke-width="2.4" fill="none" opacity=".5"/>
+                <path d="M60,300 Q220,260 420,300 T580,260" stroke="var(--amber)" stroke-width="2.4" fill="none" opacity=".5" stroke-dasharray="7 6"/></svg>
+                <div class="maplive"><span class="pulse"></span>Live tracking · updated 12s ago</div>
+                <div class="mpin" style="left:18%;top:78%"><span class="lb">R1 Ravi · 41/62</span><svg viewBox="0 0 24 30"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 18 12 18s12-9 12-18C24 5.4 18.6 0 12 0z" fill="var(--green)"/><circle cx="12" cy="12" r="4.5" fill="#fff"/></svg></div>
+                <div class="mpin" style="left:54%;top:30%"><span class="lb">R5 Mahesh · 18/71</span><svg viewBox="0 0 24 30"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 18 12 18s12-9 12-18C24 5.4 18.6 0 12 0z" fill="var(--blue)"/><circle cx="12" cy="12" r="4.5" fill="#fff"/></svg></div>
+                <div class="mpin" style="left:74%;top:88%"><span class="lb">R3 Suresh · delayed</span><svg viewBox="0 0 24 30"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 18 12 18s12-9 12-18C24 5.4 18.6 0 12 0z" fill="var(--amber)"/><circle cx="12" cy="12" r="4.5" fill="#fff"/></svg></div>
+                <div class="mpin" style="left:40%;top:55%"><span class="lb">R6 Anil</span><svg viewBox="0 0 24 30"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 18 12 18s12-9 12-18C24 5.4 18.6 0 12 0z" fill="var(--violet)"/><circle cx="12" cy="12" r="4.5" fill="#fff"/></svg></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div class="card pad"><div class="ch"><h3>Delivery sequencing</h3><span class="badge b-blue">R1 · Banjara Hills</span></div>
+                <div class="stepper"><span class="badge b-green">1</span><div class="nm"><b>#41 P. Reddy</b><small>Milk 1L · Curd 500g</small></div><span class="badge b-green">Delivered</span></div>
+                <div class="stepper" style="border-color:var(--blue)"><span class="badge b-blue">2</span><div class="nm"><b>#42 S. Iyer</b><small>Milk 2L</small></div><span class="badge b-blue">Now</span></div>
+                <div class="stepper"><span class="badge b-grey">3</span><div class="nm"><b>#43 K. Rao</b><small>Milk 1L · Paneer 200g</small></div><span class="badge b-grey">Next · 4 min</span></div>
+                <div class="stepper" style="margin-bottom:0"><span class="badge b-grey">4</span><div class="nm"><b>#44 M. Devi</b><small>Ghee 1L · Curd 500g</small></div><span class="badge b-grey">Queued</span></div>
+              </div>
+              <div class="card pad"><div class="ch"><h3>Missed deliveries</h3><span class="link" onclick="toast('Reassign sheet opened')">Reassign</span></div>
+                <div class="alert"><div class="ic i-red"><svg viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div><h4>#58 N. Kumar · R3</h4><p>Door locked · retry evening slot</p></div><button class="btn sm" style="margin-left:auto" onclick="toast('Rescheduled to 6 PM')">Retry</button></div>
+                <div class="alert" style="margin-bottom:0"><div class="ic i-red"><svg viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div><h4>#12 L. Menon · R3</h4><p>Customer paused (app) at 6 AM</p></div><button class="btn sm" style="margin-left:auto" onclick="toast('Marked resolved')">Resolve</button></div>
+              </div>
+              <div class="card pad"><div class="ch"><h3>OTP confirmation</h3><span class="badge b-green">Enabled</span></div>
+                <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px">Every delivery confirmed via 4-digit OTP or QR. Live success rate today:</p>
+                <div class="rowline" style="margin-bottom:0"><div class="t"><b>OTP verified</b><span>99.1%</span></div><div class="prog"><i style="width:99%;background:var(--green)"></i></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BILLING -->
+        <div class="page" id="p-billing">
+          <div class="phead"><div><div class="pcrumb">Finance</div><h2>Billing &amp; Payments</h2><p>UPI &amp; Razorpay collections, invoices, wallet recharges &amp; reports.</p></div>
+            <div class="pacts"><button class="btn"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 8h8M8 12h8" stroke="currentColor" stroke-width="1.6"/></svg>Invoices</button><button class="btn pri" onclick="toast('Generating collection report…')">Collection report</button></div></div>
+          <div class="grid g-4" style="margin-bottom:16px">
+            <div class="kpi"><div class="ico i-green"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M8 7h6a2.5 2.5 0 010 5H8m0 0h7a2.5 2.5 0 010 5H8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="lab">Collected today</div><div class="val">₹84,250</div><div class="delta up">▲ 12.4%</div></div>
+            <div class="kpi"><div class="ico i-amber"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="lab">Pending dues</div><div class="val">₹3,120</div><div class="delta dn">18 customers</div></div>
+            <div class="kpi"><div class="ico i-blue"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="lab">Wallet float</div><div class="val">₹2.4L</div><div class="delta up">438 wallets</div></div>
+            <div class="kpi"><div class="ico i-violet"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="lab">Success rate</div><div class="val">98.6%</div><div class="delta up">UPI + Razorpay</div></div>
+          </div>
+          <div class="grid g-2">
+            <div class="card pad"><div class="ch"><div><h3>Recent invoices</h3><div class="sub">Auto-generated daily</div></div><div class="filters" style="margin:0"><select class="sel"><option>All methods</option><option>UPI</option><option>Razorpay</option><option>Wallet</option><option>Cash</option></select></div></div>
+              <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Invoice</th><th>Customer</th><th>Method</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody id="invoiceTbl"></tbody></table></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div class="card pad"><div class="ch"><h3>Payment mix</h3><span class="link">This month</span></div>
+                <div class="rowline"><div class="t"><b>UPI (PhonePe/GPay)</b><span>58%</span></div><div class="prog"><i style="width:58%;background:var(--blue)"></i></div></div>
+                <div class="rowline"><div class="t"><b>Razorpay (cards/netbanking)</b><span>24%</span></div><div class="prog"><i style="width:24%;background:var(--violet)"></i></div></div>
+                <div class="rowline"><div class="t"><b>Wallet</b><span>13%</span></div><div class="prog"><i style="width:13%;background:var(--green)"></i></div></div>
+                <div class="rowline" style="margin-bottom:0"><div class="t"><b>Cash on delivery</b><span>5%</span></div><div class="prog"><i style="width:5%;background:var(--amber)"></i></div></div>
+              </div>
+              <div class="card pad"><div class="ch"><h3>Wallet recharge</h3><span class="badge b-blue">Razorpay</span></div>
+                <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px">Customers top up in-app. Quick recharge a wallet:</p>
+                <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><button class="btn">₹500</button><button class="btn">₹1,000</button><button class="btn">₹2,000</button></div>
+                <button class="btn grn" style="width:100%;justify-content:center" onclick="toast('Razorpay checkout opened')">Recharge wallet</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REPORTS -->
+        <div class="page" id="p-reports">
+          <div class="phead"><div><div class="pcrumb">Insights</div><h2>Reports &amp; Analytics</h2><p>Revenue, product mix, route efficiency &amp; retention.</p></div>
+            <div class="pacts"><div class="seg"><button>Week</button><button class="on">Month</button><button>Quarter</button></div><button class="btn pri" onclick="toast('Exporting PDF…')"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h8l4 4v14H6z" stroke="currentColor" stroke-width="1.6"/></svg>Export</button></div></div>
+          <div class="grid g-4" style="margin-bottom:16px">
+            <div class="kpi"><div class="lab">Monthly revenue</div><div class="val">₹23.6L</div><div class="delta up">▲ 14.2%</div></div>
+            <div class="kpi"><div class="lab">Avg order value</div><div class="val">₹164</div><div class="delta up">▲ ₹9</div></div>
+            <div class="kpi"><div class="lab">Retention (90d)</div><div class="val">91.4%</div><div class="delta up">▲ 2.1%</div></div>
+            <div class="kpi"><div class="lab">On-time delivery</div><div class="val">97.8%</div><div class="delta up">▲ 0.6%</div></div>
+          </div>
+          <div class="grid g-2" style="margin-bottom:16px">
+            <div class="card pad"><div class="ch"><div><h3>Revenue by product</h3><div class="sub">Monthly · ₹ lakh</div></div></div>
+              <div class="bars" id="reportBars"></div>
+            </div>
+            <div class="card pad"><div class="ch"><h3>Product mix</h3><span class="link">Share of revenue</span></div>
+              <div class="donut-row"><svg viewBox="0 0 120 120" style="width:120px;height:120px">
+                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--blue)" stroke-width="15" stroke-dasharray="159 130" transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--green)" stroke-width="15" stroke-dasharray="58 231" stroke-dashoffset="-159" transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--violet)" stroke-width="15" stroke-dasharray="43 246" stroke-dashoffset="-217" transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--amber)" stroke-width="15" stroke-dasharray="29 260" stroke-dashoffset="-260" transform="rotate(-90 60 60)"/>
+                <text x="60" y="56" text-anchor="middle" font-family="Sora" font-size="17" font-weight="700" fill="var(--ink)">₹23.6L</text><text x="60" y="72" text-anchor="middle" font-size="8" fill="var(--muted)">revenue</text></svg>
+                <div class="legend" style="flex-direction:column;gap:9px"><div class="li"><span class="sw" style="background:var(--blue)"></span>Milk · 55%</div><div class="li"><span class="sw" style="background:var(--green)"></span>Curd · 20%</div><div class="li"><span class="sw" style="background:var(--violet)"></span>Paneer · 15%</div><div class="li"><span class="sw" style="background:var(--amber)"></span>Ghee · 10%</div></div></div>
+            </div>
+          </div>
+          <div class="grid g-2">
+            <div class="card pad"><div class="ch"><h3>Route efficiency</h3><span class="link">Deliveries / hour</span></div>
+              <div id="routeEff"></div>
+            </div>
+            <div class="card pad"><div class="ch"><h3>Top customers</h3><span class="link">By spend</span></div>
+              <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>Route</th><th class="num">Monthly</th></tr></thead><tbody>
+                <tr><td><div class="uc"><span class="av" style="background:var(--grad-blue)">PR</span>Priya Reddy</div></td><td>R1</td><td class="num">₹3,840</td></tr>
+                <tr><td><div class="uc"><span class="av" style="background:var(--grad-green)">AS</span>A. Sharma</div></td><td>R5</td><td class="num">₹3,210</td></tr>
+                <tr><td><div class="uc"><span class="av" style="background:linear-gradient(135deg,#6d5ae0,#9a8af0)">MD</span>M. Devi</div></td><td>R1</td><td class="num">₹2,980</td></tr>
+                <tr><td><div class="uc"><span class="av" style="background:linear-gradient(135deg,#e09a2d,#f0b95a)">KR</span>K. Rao</div></td><td>R3</td><td class="num">₹2,640</td></tr>
+              </tbody></table></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <div class="foot">Responsive admin console — resize to see the sidebar collapse to a hamburger menu. Click any customer or invoice row to open its detail drawer. Toggle <b>dark mode</b> top-right.</div>
+</div>
+
+<!-- ============ STAFF + CUSTOMER APPS ============ -->
+<div class="modeview" id="mode-staff">
+  <div class="phones">
+    <div class="pcol">
+      <div class="pnav">
+        <button class="on" onclick="sGo('s-login')">Login</button><button onclick="sGo('s-route')">Today's route</button><button onclick="sGo('s-stop')">Delivery + OTP</button><button onclick="sGo('s-qr')">QR collect</button><button onclick="sGo('s-map')">GPS</button><button onclick="sGo('s-earn')">Earnings</button>
+      </div>
+      <div class="phone"><div class="pscreen">
+        <div class="sc on" id="s-login"><div style="height:100%;background:var(--grad-blue);display:flex;flex-direction:column;color:#fff;position:relative;overflow:hidden">
+          <svg viewBox="0 0 24 24" fill="none" style="position:absolute;inset:0;width:100%;height:100%;opacity:.12"><rect width="100%" height="100%" fill="url(#dots)" color="#fff"/></svg>
+          <div class="sbar" style="color:#fff"><span>9:41</span><span>▮▮▮ ⚡</span></div>
+          <div style="flex:1;padding:50px 28px 0;position:relative"><div style="width:62px;height:62px;border-radius:18px;background:rgba(255,255,255,.16);display:grid;place-items:center;border:1px solid rgba(255,255,255,.25)"><svg viewBox="0 0 24 24" fill="none" width="32" height="32"><path d="M7 3h10l-1 4c2 1 3 3 3 6v6a2 2 0 01-2 2H7a2 2 0 01-2-2v-6c0-3 1-5 3-6L7 3z" stroke="#fff" stroke-width="1.5"/></svg></div>
+            <h1 style="font-family:Sora;font-size:30px;font-weight:700;margin:24px 0 8px;line-height:1.1">Varun Dairy<br>Delivery</h1><p style="opacity:.85;font-size:14px;margin:0">Driver app for daily routes &amp; collections.</p></div>
+          <div style="background:var(--bg);border-radius:30px 30px 38px 38px;padding:24px 24px 30px;position:relative">
+            <div style="margin-bottom:14px"><label style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px">Phone number</label><div style="border:1.5px solid var(--line);background:var(--surface);border-radius:13px;padding:13px;font-size:15px;font-weight:600">+91 98765 43210</div></div>
+            <button class="bigbtn" onclick="sGo('s-route')">Send OTP &amp; sign in</button>
+            <p style="text-align:center;font-size:12px;color:var(--muted);margin:14px 0 0">Works offline · syncs when online</p>
+          </div>
+        </div></div>
+
+        <div class="sc" id="s-route"><div class="scsroll"><div class="sbar"><span>9:42</span><span>▮▮▮ ⚡</span></div>
+          <div class="ppad">
+            <div class="offline"><span class="d"></span> Offline mode — 4 deliveries saved, will sync</div>
+            <h2 class="ph-h">Today · R1 Banjara Hills</h2><p class="ph-s">62 stops · 41 done · ₹6,400 to collect</p>
+            <div class="herocard g"><div class="lab">Route progress</div><div class="big">41 / 62</div><div class="prog" style="margin-top:12px;background:rgba(255,255,255,.3)"><i style="width:66%;background:#fff"></i></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px"><b style="font-size:13px">Next stops</b><span class="kbd">tap to open</span></div>
+            <div class="tap" onclick="sGo('s-stop')"><div class="ic i-blue"><svg viewBox="0 0 24 24" fill="none"><path d="M3 11l9-7 9 7v8a2 2 0 01-2 2h-3v-6H8v6H5a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.6"/></svg></div><div><h4>#42 · S. Iyer</h4><p>Milk 2L · ₹120 · Flat 304</p></div><span class="go"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2"/></svg></span></div>
+            <div class="tap" onclick="sGo('s-stop')"><div class="ic i-green"><svg viewBox="0 0 24 24" fill="none"><path d="M3 11l9-7 9 7v8a2 2 0 01-2 2h-3v-6H8v6H5a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.6"/></svg></div><div><h4>#43 · K. Rao</h4><p>Milk 1L · Paneer 200g · ₹180</p></div><span class="go"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2"/></svg></span></div>
+            <div class="tap" onclick="sGo('s-stop')"><div class="ic i-amber"><svg viewBox="0 0 24 24" fill="none"><path d="M3 11l9-7 9 7v8a2 2 0 01-2 2h-3v-6H8v6H5a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.6"/></svg></div><div><h4>#44 · M. Devi</h4><p>Ghee 1L · Curd 500g · ₹240</p></div><span class="go"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2"/></svg></span></div>
+          </div></div>
+          <div class="ptab"><a class="on" onclick="sGo('s-route')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Route</a><a onclick="sGo('s-map')"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-5.5-7-11a7 7 0 1114 0z" stroke="currentColor" stroke-width="1.6"/></svg>Map</a><a onclick="sGo('s-earn')"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M8 7h6a2.5 2.5 0 010 5H8m0 0h7a2.5 2.5 0 010 5H8" stroke="currentColor" stroke-width="1.6"/></svg>Earnings</a></div>
+        </div>
+
+        <div class="sc" id="s-stop"><div class="scsroll"><div class="sbar"><span>9:44</span><span>▮▮▮ ⚡</span></div>
+          <div class="ppad">
+            <span class="pback" onclick="sGo('s-route')">‹ Back to route</span>
+            <h2 class="ph-h">Stop #42 · S. Iyer</h2><p class="ph-s">Flat 304, Lake View Apt · Banjara Hills</p>
+            <div class="tap" style="margin-top:6px"><div class="ic i-blue"><svg viewBox="0 0 24 24" fill="none"><path d="M7 3h10l-1 4c2 1 3 3 3 6v6a2 2 0 01-2 2H7a2 2 0 01-2-2v-6c0-3 1-5 3-6L7 3z" stroke="currentColor" stroke-width="1.5"/></svg></div><div><h4>Milk 2L (full cream)</h4><p>Subscription · daily</p></div><b class="mono" style="margin-left:auto">₹120</b></div>
+            <div style="text-align:center;margin:18px 0 6px"><b style="font-size:14px">Enter delivery OTP</b><p style="font-size:12px;color:var(--muted);margin:3px 0 0">Customer's app shows a 4-digit code</p></div>
+            <div class="otpwrap"><div class="o f">4</div><div class="o f">7</div><div class="o">_</div><div class="o">_</div></div>
+            <button class="bigbtn grn" onclick="toast('Delivered ✓ · synced')">Confirm delivery</button>
+            <button class="bigbtn gho" style="margin-top:9px" onclick="sGo('s-qr')">Collect payment by QR</button>
+            <button class="bigbtn gho" style="margin-top:9px;color:var(--red);border-color:color-mix(in srgb,var(--red) 30%,transparent)" onclick="toast('Marked missed · retry tonight')">Mark as missed</button>
+          </div></div>
+        </div>
+
+        <div class="sc" id="s-qr"><div class="scsroll"><div class="sbar"><span>9:45</span><span>▮▮▮ ⚡</span></div>
+          <div class="ppad">
+            <span class="pback" onclick="sGo('s-stop')">‹ Back</span>
+            <h2 class="ph-h">Collect ₹120</h2><p class="ph-s">S. Iyer · scan to pay via UPI</p>
+            <div class="qrbox"><svg viewBox="0 0 100 100" shape-rendering="crispEdges"><rect width="100" height="100" fill="#fff"/><g fill="#0e1b2e"><rect x="6" y="6" width="22" height="22"/><rect x="11" y="11" width="12" height="12" fill="#fff"/><rect x="14" y="14" width="6" height="6" fill="#0e1b2e"/><rect x="72" y="6" width="22" height="22"/><rect x="77" y="11" width="12" height="12" fill="#fff"/><rect x="80" y="14" width="6" height="6"/><rect x="6" y="72" width="22" height="22"/><rect x="11" y="77" width="12" height="12" fill="#fff"/><rect x="14" y="80" width="6" height="6"/><rect x="36" y="8" width="5" height="5"/><rect x="46" y="8" width="5" height="5"/><rect x="58" y="8" width="5" height="5"/><rect x="36" y="20" width="5" height="5"/><rect x="50" y="20" width="5" height="5"/><rect x="8" y="36" width="5" height="5"/><rect x="20" y="36" width="5" height="5"/><rect x="34" y="34" width="6" height="6"/><rect x="46" y="36" width="5" height="5"/><rect x="58" y="34" width="6" height="6"/><rect x="70" y="36" width="5" height="5"/><rect x="84" y="36" width="5" height="5"/><rect x="36" y="48" width="5" height="5"/><rect x="48" y="46" width="6" height="6"/><rect x="62" y="48" width="5" height="5"/><rect x="78" y="48" width="5" height="5"/><rect x="8" y="58" width="5" height="5"/><rect x="22" y="58" width="5" height="5"/><rect x="36" y="60" width="5" height="5"/><rect x="50" y="58" width="5" height="5"/><rect x="64" y="60" width="5" height="5"/><rect x="80" y="58" width="5" height="5"/><rect x="36" y="72" width="5" height="5"/><rect x="48" y="74" width="6" height="6"/><rect x="62" y="72" width="5" height="5"/><rect x="74" y="74" width="5" height="5"/><rect x="86" y="72" width="5" height="5"/><rect x="36" y="86" width="5" height="5"/><rect x="50" y="86" width="5" height="5"/><rect x="64" y="86" width="5" height="5"/><rect x="78" y="86" width="5" height="5"/></g></svg></div>
+            <p style="text-align:center;font-size:12.5px;color:var(--muted);margin:14px 0 0">UPI · Razorpay · varundairy@upi</p>
+            <button class="bigbtn grn" style="margin-top:14px" onclick="toast('₹120 received via UPI ✓')">Mark paid</button>
+            <button class="bigbtn gho" style="margin-top:9px" onclick="toast('Cash recorded')">Collected cash</button>
+          </div></div>
+        </div>
+
+        <div class="sc" id="s-map"><div class="scsroll"><div class="sbar"><span>9:46</span><span>▮▮▮ ⚡</span></div>
+          <div class="ppad"><h2 class="ph-h">Navigation</h2><p class="ph-s">GPS tracking on · next stop 280m</p></div>
+          <div class="map" style="height:380px;margin:0 18px;border-radius:18px"><svg class="base" viewBox="0 0 300 380" preserveAspectRatio="none"><rect width="100%" height="100%" fill="url(#dots)" color="var(--blue)"/><path d="M40,340 Q120,250 160,200 T230,80" stroke="var(--blue)" stroke-width="4" fill="none" stroke-linecap="round"/></svg>
+            <div class="maplive"><span class="pulse"></span>You · live</div>
+            <div class="mpin" style="left:14%;top:88%"><svg viewBox="0 0 24 30"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 18 12 18s12-9 12-18C24 5.4 18.6 0 12 0z" fill="var(--green)"/><circle cx="12" cy="12" r="4.5" fill="#fff"/></svg></div>
+            <div class="mpin" style="left:76%;top:22%"><span class="lb">#42 S. Iyer</span><svg viewBox="0 0 24 30"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 18 12 18s12-9 12-18C24 5.4 18.6 0 12 0z" fill="var(--blue)"/><circle cx="12" cy="12" r="4.5" fill="#fff"/></svg></div>
+          </div>
+          <div class="ppad" style="padding-top:14px"><button class="bigbtn" onclick="sGo('s-stop')">Arrived — open stop</button></div>
+        </div>
+
+        <div class="sc" id="s-earn"><div class="scsroll"><div class="sbar"><span>9:47</span><span>▮▮▮ ⚡</span></div>
+          <div class="ppad"><h2 class="ph-h">Today's collection</h2><p class="ph-s">Ravi · R1 Banjara Hills</p>
+            <div class="herocard"><div class="lab">Collected so far</div><div class="big">₹6,120</div><div style="display:flex;gap:18px;margin-top:12px;font-size:12px"><span>UPI ₹4,200</span><span>Cash ₹1,920</span></div></div>
+            <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+              <div class="card pad" style="border-radius:14px"><div style="font-size:11px;color:var(--muted);font-weight:600">Deliveries</div><div style="font-family:Sora;font-size:22px;font-weight:700">41</div></div>
+              <div class="card pad" style="border-radius:14px"><div style="font-size:11px;color:var(--muted);font-weight:600">Pending</div><div style="font-family:Sora;font-size:22px;font-weight:700">21</div></div>
+            </div>
+            <div style="margin:16px 0 8px"><b style="font-size:13px">Recent</b></div>
+            <div class="tap"><div class="ic i-green"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div><h4>#41 P. Reddy</h4><p>UPI · OTP verified</p></div><b class="mono" style="margin-left:auto">₹150</b></div>
+            <div class="tap" style="margin-bottom:0"><div class="ic i-green"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div><h4>#40 J. Nair</h4><p>Cash</p></div><b class="mono" style="margin-left:auto">₹90</b></div>
+          </div></div>
+          <div class="ptab"><a onclick="sGo('s-route')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Route</a><a onclick="sGo('s-map')"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-5.5-7-11a7 7 0 1114 0z" stroke="currentColor" stroke-width="1.6"/></svg>Map</a><a class="on" onclick="sGo('s-earn')"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M8 7h6a2.5 2.5 0 010 5H8m0 0h7a2.5 2.5 0 010 5H8" stroke="currentColor" stroke-width="1.6"/></svg>Earnings</a></div>
+        </div>
+
+      </div></div>
+      <div style="font-size:12.5px;color:var(--muted);max-width:300px;text-align:center">Large touch targets, OTP + QR collection, offline sync &amp; GPS — built for fast doorstep delivery.</div>
+    </div>
+  </div>
+</div>
+
+<div class="modeview" id="mode-cust">
+  <div class="phones">
+    <div class="pcol">
+      <div class="pnav">
+        <button class="on" onclick="cGo('c-home')">Home</button><button onclick="cGo('c-sub')">Subscription</button><button onclick="cGo('c-custom')">Customize order</button><button onclick="cGo('c-store')">Add-ons</button><button onclick="cGo('c-wallet')">Wallet</button><button onclick="cGo('c-chat')">Support</button>
+      </div>
+      <div class="phone"><div class="pscreen">
+        <div class="sc on" id="c-home"><div class="scsroll"><div class="sbar"><span>9:41</span><span>▮▮▮ ⚡</span></div>
+          <div class="ppad">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0 14px"><div><div style="font-size:12px;color:var(--muted)">Good morning</div><div style="font-family:Sora;font-size:19px;font-weight:700">Priya Reddy 👋</div></div><div style="width:42px;height:42px;border-radius:13px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center"><svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6z" stroke="currentColor" stroke-width="1.6"/><path d="M10 20a2 2 0 004 0" stroke="currentColor" stroke-width="1.6"/></svg></div></div>
+            <div class="herocard"><div class="lab">Today's delivery · arriving ~9:45 AM</div><div style="display:flex;align-items:center;gap:10px;margin-top:8px"><div class="big" style="font-size:20px">Milk 1L · Curd 500g</div></div>
+              <div style="display:flex;gap:10px;margin-top:14px"><button class="btn sm" style="background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3);color:#fff" onclick="cGo('c-custom')">Customize</button><button class="btn sm" style="background:#fff;border-color:#fff;color:var(--blue)" onclick="toast('Tomorrow paused')">Pause tomorrow</button></div></div>
+            <div class="qrow">
+              <div class="qa" onclick="cGo('c-wallet')"><div class="ic i-green"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.3" stroke="currentColor" stroke-width="1.6"/></svg></div><span>Wallet</span></div>
+              <div class="qa" onclick="cGo('c-sub')"><div class="ic i-blue"><svg viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 1018 0" stroke="currentColor" stroke-width="1.7"/></svg></div><span>Subscription</span></div>
+              <div class="qa" onclick="cGo('c-store')"><div class="ic i-violet"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14l-1 13H6L5 7zM9 7a3 3 0 016 0" stroke="currentColor" stroke-width="1.6"/></svg></div><span>Add-ons</span></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px"><b style="font-size:13px">Your wallet</b><span class="link" onclick="cGo('c-wallet')">Recharge</span></div>
+            <div class="tap"><div class="ic i-green"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/></svg></div><div><h4 class="mono">₹640.00</h4><p>Good for ~5 days</p></div><button class="btn sm pri" style="margin-left:auto" onclick="cGo('c-wallet')">Top up</button></div>
+            <div style="margin:14px 0 8px"><b style="font-size:13px">Recent notifications</b></div>
+            <div class="tap"><div class="ic i-blue"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2"/></svg></div><div><h4>Delivered yesterday</h4><p>Milk 1L · 9:38 AM</p></div></div>
+          </div></div>
+          <div class="ptab"><a class="on" onclick="cGo('c-home')"><svg viewBox="0 0 24 24" fill="none"><path d="M3 11l9-7 9 7v8a2 2 0 01-2 2h-3v-6H8v6H5a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.6"/></svg>Home</a><a onclick="cGo('c-sub')"><svg viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 1018 0" stroke="currentColor" stroke-width="1.6"/></svg>Plan</a><a onclick="cGo('c-store')"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14l-1 13H6L5 7z" stroke="currentColor" stroke-width="1.6"/></svg>Store</a><a onclick="cGo('c-chat')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16v10H8l-4 4V6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Support</a></div>
+        </div>
+
+        <div class="sc" id="c-sub"><div class="scsroll"><div class="sbar"><span>9:42</span><span>▮▮▮ ⚡</span></div>
+          <div class="ppad"><h2 class="ph-h">My subscription</h2><p class="ph-s">Daily milk plan · R1 Banjara Hills</p>
+            <div class="card pad" style="border-radius:16px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center"><div><b style="font-size:14px">Milk 1L — full cream</b><div style="font-size:12px;color:var(--muted)">Every day · 6–9 AM</div></div><span class="badge b-green">Active</span></div>
+              <div class="prog" style="margin-top:12px"><i style="width:100%;background:var(--green)"></i></div></div>
+            <div class="card pad" style="border-radius:16px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center"><div><b style="font-size:14px">Curd 500g</b><div style="font-size:12px;color:var(--muted)">Mon, Wed, Fri</div></div><span class="badge b-green">Active</span></div></div>
+            <div style="margin:6px 0 8px"><b style="font-size:13px">Manage deliveries</b></div>
+            <div class="stepper"><div class="nm"><b>Pause deliveries</b><small>Going on vacation?</small></div><div class="tg" id="pauseTg" onclick="this.classList.toggle('on');toast(this.classList.contains('on')?'Deliveries paused':'Deliveries resumed')" style="width:46px;height:26px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;flex:0 0 46px"><span style="position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span></div></div>
+            <div class="stepper" style="margin-bottom:0"><div class="nm"><b>Delivery route</b><small>R1 · Banjara Hills · Ravi</small></div><span class="badge b-blue" style="margin-left:auto">Assigned</span></div>
+            <button class="bigbtn gho" style="margin-top:16px" onclick="cGo('c-custom')">Edit daily order</button>
+          </div></div>
+          <div class="ptab"><a onclick="cGo('c-home')"><svg viewBox="0 0 24 24" fill="none"><path d="M3 11l9-7 9 7v8a2 2 0 01-2 2h-3v-6H8v6H5a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.6"/></svg>Home</a><a class="on" onclick="cGo('c-sub')"><svg viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 1018 0" stroke="currentColor" stroke-width="1.6"/></svg>Plan</a><a onclick="cGo('c-store')"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14l-1 13H6L5 7z" stroke="currentColor" stroke-width="1.6"/></svg>Store</a><a onclick="cGo('c-chat')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16v10H8l-4 4V6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Support</a></div>
+        </div>
+
+        <div class="sc" id="c-custom"><div class="scsroll"><div class="sbar"><span>9:43</span><span>▮▮▮ ⚡</span></div>
+          <div class="ppad"><span class="pback" onclick="cGo('c-home')">‹ Home</span><h2 class="ph-h">Tomorrow's order</h2><p class="ph-s">Wed, 29 May · edit before 9 PM</p>
+            <div class="stepper"><div style="width:38px;height:38px;border-radius:10px;background:var(--blue-50);display:grid;place-items:center;font-size:18px">🥛</div><div class="nm"><b>Milk (full cream)</b><small>₹60 / litre</small></div><div class="ct"><button onclick="step(this,-1)">−</button><b>1</b><button onclick="step(this,1)">+</button></div></div>
+            <div class="stepper"><div style="width:38px;height:38px;border-radius:10px;background:var(--green-50);display:grid;place-items:center;font-size:18px">🍶</div><div class="nm"><b>Curd 500g</b><small>₹40 each</small></div><div class="ct"><button onclick="step(this,-1)">−</button><b>1</b><button onclick="step(this,1)">+</button></div></div>
+            <div class="stepper"><div style="width:38px;height:38px;border-radius:10px;background:color-mix(in srgb,var(--violet) 12%,transparent);display:grid;place-items:center;font-size:18px">🧀</div><div class="nm"><b>Paneer 200g</b><small>₹90 each</small></div><div class="ct"><button onclick="step(this,-1)">−</button><b>0</b><button onclick="step(this,1)">+</button></div></div>
+            <div class="stepper" style="margin-bottom:0"><div style="width:38px;height:38px;border-radius:10px;background:var(--amber-50);display:grid;place-items:center;font-size:18px">🫕</div><div class="nm"><b>Ghee 1L</b><small>₹620 each</small></div><div class="ct"><button onclick="step(this,-1)">−</button><b>0</b><button onclick="step(this,1)">+</button></div></div>
+            <div class="card pad" style="border-radius:14px;margin-top:14px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;color:var(--muted)">Tomorrow's total</div><div class="mono" style="font-size:20px;font-weight:600">₹100</div></div><span class="badge b-green">Paid via wallet</span></div>
+            <button class="bigbtn" style="margin-top:14px" onclick="toast('Order updated for tomorrow ✓')">Save changes</button>
+          </div></div>
+        </div>
+
+        <div class="sc" id="c-store"><div class="scsroll"><div class="sbar"><span>9:44</span><span>▮▮▮ ⚡</span></div>
+          <div class="ppad"><h2 class="ph-h">Add-ons store</h2><p class="ph-s">One-time extras with tomorrow's delivery</p>
+            <div class="grid" style="grid-template-columns:1fr 1fr;gap:11px">
+              <div class="card pad" style="border-radius:16px"><div style="height:74px;border-radius:12px;background:var(--blue-50);display:grid;place-items:center;font-size:34px;margin-bottom:10px">🥛</div><b style="font-size:13.5px">Buffalo Milk 1L</b><div style="font-size:11px;color:var(--muted)">Extra rich</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><b class="mono">₹75</b><button class="btn sm pri" onclick="toast('Added to tomorrow')">Add</button></div></div>
+              <div class="card pad" style="border-radius:16px"><div style="height:74px;border-radius:12px;background:var(--green-50);display:grid;place-items:center;font-size:34px;margin-bottom:10px">🧈</div><b style="font-size:13.5px">Butter 100g</b><div style="font-size:11px;color:var(--muted)">Fresh churned</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><b class="mono">₹55</b><button class="btn sm pri" onclick="toast('Added to tomorrow')">Add</button></div></div>
+              <div class="card pad" style="border-radius:16px"><div style="height:74px;border-radius:12px;background:color-mix(in srgb,var(--violet) 12%,transparent);display:grid;place-items:center;font-size:34px;margin-bottom:10px">🧀</div><b style="font-size:13.5px">Paneer 500g</b><div style="font-size:11px;color:var(--muted)">Soft &amp; fresh</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><b class="mono">₹210</b><button class="btn sm pri" onclick="toast('Added to tomorrow')">Add</button></div></div>
+              <div class="card pad" style="border-radius:16px"><div style="height:74px;border-radius:12px;background:var(--amber-50);display:grid;place-items:center;font-size:34px;margin-bottom:10px">🫕</div><b style="font-size:13.5px">Cow Ghee 500ml</b><div style="font-size:11px;color:var(--muted)">A2 quality</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><b class="mono">₹340</b><button class="btn sm pri" onclick="toast('Added to tomorrow')">Add</button></div></div>
+            </div>
+          </div></div>
+          <div class="ptab"><a onclick="cGo('c-home')"><svg viewBox="0 0 24 24" fill="none"><path d="M3 11l9-7 9 7v8a2 2 0 01-2 2h-3v-6H8v6H5a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.6"/></svg>Home</a><a onclick="cGo('c-sub')"><svg viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 1018 0" stroke="currentColor" stroke-width="1.6"/></svg>Plan</a><a class="on" onclick="cGo('c-store')"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14l-1 13H6L5 7z" stroke="currentColor" stroke-width="1.6"/></svg>Store</a><a onclick="cGo('c-chat')"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16v10H8l-4 4V6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Support</a></div>
+        </div>
+
+        <div class="sc" id="c-wallet"><div class="scsroll"><div class="sbar"><span>9:45</span><span>▮▮▮ ⚡</span></div>
+          <div class="ppad"><span class="pback" onclick="cGo('c-home')">‹ Home</span><h2 class="ph-h">Wallet</h2><p class="ph-s">Auto-debited each delivery</p>
+            <div class="herocard g"><div class="lab">Available balance</div><div class="big">₹640.00</div><div style="font-size:12px;margin-top:6px;opacity:.9">≈ 5 days of deliveries</div></div>
+            <div style="margin:16px 0 8px"><b style="font-size:13px">Add money</b></div>
+            <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:11px"><button class="btn" onclick="toast('₹500 via UPI')">₹500</button><button class="btn" onclick="toast('₹1,000 via UPI')">₹1,000</button><button class="btn" onclick="toast('₹2,000 via UPI')">₹2,000</button></div>
+            <button class="bigbtn grn" onclick="toast('Razorpay checkout…')">Recharge via UPI / Razorpay</button>
+            <div style="margin:18px 0 8px"><b style="font-size:13px">Payment history</b></div>
+            <div class="tap"><div class="ic i-green"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7-7 7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h4>Recharge</h4><p>UPI · 26 May</p></div><b class="mono" style="margin-left:auto;color:var(--green)">+₹1,000</b></div>
+            <div class="tap" style="margin-bottom:0"><div class="ic i-blue"><svg viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7 7 7-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h4>Daily delivery</h4><p>27 May</p></div><b class="mono" style="margin-left:auto">−₹150</b></div>
+          </div></div>
+        </div>
+
+        <div class="sc" id="c-chat"><div class="scsroll"><div class="sbar"><span>9:46</span><span>▮▮▮ ⚡</span></div>
+          <div class="ppad"><h2 class="ph-h">Support</h2><p class="ph-s">Typically replies in &lt; 5 min</p>
+            <div class="chat">
+              <div class="bub in">Hi Priya! 👋 How can we help with your dairy delivery today?</div>
+              <div class="bub out">Today's curd was missing from my order</div>
+              <div class="bub in">So sorry! I've logged complaint #C-1182. We'll add a free Curd 500g to tomorrow's delivery and credit ₹40 to your wallet. ✅</div>
+              <div class="bub out">Thank you 🙏</div>
+              <div class="bub in">Anything else? You can also pause or customize from the app anytime.</div>
+            </div>
+          </div></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:12px 16px;background:var(--surface);border-top:1px solid var(--line);display:flex;gap:9px;align-items:center"><div style="flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:11px 15px;font-size:13px;color:var(--muted)">Type a message…</div><button style="width:42px;height:42px;border-radius:50%;border:0;background:var(--blue);color:#fff;cursor:pointer" onclick="toast('Message sent')"><svg viewBox="0 0 24 24" fill="none" width="18" height="18" style="margin-top:2px"><path d="M4 12l16-7-7 16-2-7-7-2z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></button></div>
+        </div>
+
+      </div></div>
+      <div style="font-size:12.5px;color:var(--muted);max-width:300px;text-align:center">Self-serve subscriptions, daily order customization, add-ons, wallet recharge &amp; support chat.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DESIGN SYSTEM ============ -->
+<div class="modeview" id="mode-ds">
+  <div class="phead" style="margin-bottom:18px"><div><div class="pcrumb">Handoff-ready</div><h2>Design System &amp; UI Kit</h2><p>Tokens, type scale &amp; components powering every Varun Dairy surface.</p></div></div>
+  <div class="grid g-2b" style="margin-bottom:16px">
+    <div class="card pad"><div class="ch"><h3>Color palette</h3><span class="sub">White · dairy blue · fresh green</span></div>
+      <div class="grid g-4">
+        <div><div class="ds-sw" style="background:var(--blue)"></div><div class="ds-name">Blue / Primary</div><div class="ds-hex">#1565d8</div></div>
+        <div><div class="ds-sw" style="background:var(--green)"></div><div class="ds-name">Green / Fresh</div><div class="ds-hex">#13a06a</div></div>
+        <div><div class="ds-sw" style="background:var(--amber)"></div><div class="ds-name">Amber / Warn</div><div class="ds-hex">#e09a2d</div></div>
+        <div><div class="ds-sw" style="background:var(--red)"></div><div class="ds-name">Red / Alert</div><div class="ds-hex">#e0564b</div></div>
+        <div><div class="ds-sw" style="background:var(--violet)"></div><div class="ds-name">Violet / Accent</div><div class="ds-hex">#6d5ae0</div></div>
+        <div><div class="ds-sw" style="background:var(--ink)"></div><div class="ds-name">Ink / Text</div><div class="ds-hex">#0e1b2e</div></div>
+        <div><div class="ds-sw" style="background:var(--bg);border:1px solid var(--line)"></div><div class="ds-name">App background</div><div class="ds-hex">#eef3fa</div></div>
+        <div><div class="ds-sw" style="background:var(--surface);border:1px solid var(--line)"></div><div class="ds-name">Surface</div><div class="ds-hex">#ffffff</div></div>
+      </div>
+      <div class="note" style="font-size:11.5px;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-top:14px">All colors are CSS variables that flip automatically in dark mode — toggle top-right.</div>
+    </div>
+    <div class="card pad"><div class="ch"><h3>Typography scale</h3><span class="sub">Sora · Hanken Grotesk · JetBrains Mono</span></div>
+      <div class="type-row"><span class="meta">Display / 32</span><span class="display" style="font-size:32px;font-weight:700;letter-spacing:-.5px">Fresh every morning</span></div>
+      <div class="type-row"><span class="meta">H2 / 24 · Sora 700</span><span class="display" style="font-size:24px;font-weight:700">Dashboard heading</span></div>
+      <div class="type-row"><span class="meta">H3 / 16 · Sora 600</span><span class="display" style="font-size:16px;font-weight:600">Card title</span></div>
+      <div class="type-row"><span class="meta">Body / 14 · Hanken</span><span style="font-size:14px">Operations manager reviews routes daily.</span></div>
+      <div class="type-row"><span class="meta">Label / 11 · 700 caps</span><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Active subscriptions</span></div>
+      <div class="type-row" style="border-bottom:0"><span class="meta">Data / Mono</span><span class="mono" style="font-size:18px;font-weight:600">₹84,250.00</span></div>
+    </div>
+  </div>
+  <div class="grid g-3" style="margin-bottom:16px">
+    <div class="card pad"><div class="ch"><h3>Buttons</h3></div>
+      <div style="display:flex;flex-wrap:wrap;gap:9px"><button class="btn pri">Primary</button><button class="btn grn">Success</button><button class="btn">Default</button><button class="btn sm">Small</button></div>
+    </div>
+    <div class="card pad"><div class="ch"><h3>Badges / status</h3></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="badge b-green"><span class="dotb" style="background:var(--green)"></span>Active</span><span class="badge b-blue">In transit</span><span class="badge b-amber">Delayed</span><span class="badge b-red">Missed</span><span class="badge b-grey">Paused</span></div>
+    </div>
+    <div class="card pad"><div class="ch"><h3>Radii &amp; shadow</h3></div>
+      <div style="display:flex;gap:12px;align-items:flex-end"><div style="width:54px;height:54px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);box-shadow:var(--sh-s)"></div><div style="width:54px;height:54px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);box-shadow:var(--sh-m)"></div><div style="width:54px;height:54px;border-radius:20px;background:var(--surface-2);border:1px solid var(--line);box-shadow:var(--sh-l)"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px" class="mono">10 · 14 · 20 px</div>
+    </div>
+  </div>
+  <div class="card pad"><div class="ch"><h3>Icon set</h3><span class="sub">Minimal 1.6px line icons</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;color:var(--ink-2)">
+      <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><path d="M7 3h10l-1 4c2 1 3 3 3 6v6a2 2 0 01-2 2H7a2 2 0 01-2-2v-6c0-3 1-5 3-6L7 3z" stroke="currentColor" stroke-width="1.5"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><path d="M3 8l9-5 9 5-9 5-9-5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M3 19a6 6 0 0112 0" stroke="currentColor" stroke-width="1.6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><path d="M12 21s-7-5.5-7-11a7 7 0 1114 0z" stroke="currentColor" stroke-width="1.6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><path d="M4 18V9M10 18V5M16 18v-7M22 18H2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.6"/></svg>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- CUSTOMER DRAWER -->
+<div class="drawer-bg" id="drawerBg" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer"><div class="drawer-h"><div><h3 id="drTitle">Customer</h3><div class="sub" id="drSub" style="font-size:12px;color:var(--muted)"></div></div><button class="x" onclick="closeDrawer()">✕</button></div><div class="drawer-b" id="drBody"></div></div>
+
+<div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="toastMsg"></span></div>
+
+<script>
+/* mode + theme */
+function setMode(m){['admin','staff','cust','ds'].forEach(x=>{document.getElementById('mode-'+x).classList.toggle('on',x===m);document.getElementById('m-'+x).classList.toggle('on',x===m);});window.scrollTo({top:0,behavior:'smooth'});}
+function toggleTheme(){document.body.classList.toggle('dark');const d=document.body.classList.contains('dark');document.getElementById('themeIcon').innerHTML=d?'<path d="M21 12.8A8.5 8.5 0 1111.2 3a6.5 6.5 0 009.8 9.8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>':'<circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>';}
+function aGo(p){document.querySelectorAll('#mode-admin .page').forEach(x=>x.classList.toggle('on',x.id==='p-'+p));document.querySelectorAll('#mode-admin .nav').forEach(n=>n.classList.toggle('on',n.dataset.p===p));document.getElementById('aurl').textContent='app.varundairy.in / '+p;document.getElementById('aside').classList.remove('open');document.querySelector('#mode-admin .amain').scrollTop=0;}
+function sGo(id){document.querySelectorAll('#mode-staff .sc').forEach(s=>s.classList.toggle('on',s.id===id));document.querySelectorAll('#mode-staff .pnav button').forEach(b=>{});syncPnav('staff',id);}
+function cGo(id){document.querySelectorAll('#mode-cust .sc').forEach(s=>s.classList.toggle('on',s.id===id));syncPnav('cust',id);}
+function syncPnav(mode,id){const map=mode==='staff'?{'s-login':0,'s-route':1,'s-stop':2,'s-qr':3,'s-map':4,'s-earn':5}:{'c-home':0,'c-sub':1,'c-custom':2,'c-store':3,'c-wallet':4,'c-chat':5};const btns=document.querySelectorAll('#mode-'+mode+' .pnav button');btns.forEach((b,i)=>b.classList.toggle('on',i===map[id]));}
+function step(btn,d){const b=btn.parentElement.querySelector('b');let v=Math.max(0,parseInt(b.textContent)+d);b.textContent=v;}
+
+/* data */
+const products=[
+  {n:'Milk',e:'🥛',c:'#1565d8',stock:'1,240 L',cap:78,unit:'litres',status:'Healthy',sb:'b-green'},
+  {n:'Curd',e:'🍶',c:'#13a06a',stock:'46 units',cap:22,unit:'500g packs',status:'Low',sb:'b-amber'},
+  {n:'Ghee',e:'🫕',c:'#e09a2d',stock:'28 units',cap:35,unit:'1L jars',status:'Expiring',sb:'b-amber'},
+  {n:'Paneer',e:'🧀',c:'#6d5ae0',stock:'14 units',cap:9,unit:'200g packs',status:'Critical',sb:'b-red'},
+];
+const batches=[
+  {p:'Milk',e:'🥛',c:'#1565d8',b:'ML-0529A',mfg:'28 May',exp:'30 May',qty:'820 L',st:'Fresh',sb:'b-green'},
+  {p:'Curd',e:'🍶',c:'#13a06a',b:'CD-0527',mfg:'27 May',exp:'31 May',qty:'46',st:'Low',sb:'b-amber'},
+  {p:'Paneer',e:'🧀',c:'#6d5ae0',b:'PN-2218',mfg:'27 May',exp:'29 May',qty:'14',st:'Critical',sb:'b-red'},
+  {p:'Ghee',e:'🫕',c:'#e09a2d',b:'GH-0512',mfg:'12 May',exp:'31 May',qty:'28',st:'Expiring',sb:'b-amber'},
+  {p:'Milk',e:'🥛',c:'#1565d8',b:'ML-0528B',mfg:'28 May',exp:'30 May',qty:'420 L',st:'Fresh',sb:'b-green'},
+];
+const customers=[
+  {n:'Priya Reddy',ph:'98765 43210',plan:'Daily milk 1L + Curd',route:'R1 Banjara Hills',w:'₹640',st:'Active',sb:'b-green',lp:'₹150 · 27 May',c:'#1565d8,#1257bf'},
+  {n:'A. Sharma',ph:'99001 22334',plan:'Daily milk 2L',route:'R5 Kukatpally',w:'₹1,210',st:'Active',sb:'b-green',lp:'₹240 · 27 May',c:'#13a06a,#0f8a5b'},
+  {n:'M. Devi',ph:'90300 55667',plan:'Alternate · Ghee+Curd',route:'R1 Banjara Hills',w:'₹80',st:'Active',sb:'b-green',lp:'₹240 · 26 May',c:'#6d5ae0,#9a8af0'},
+  {n:'K. Rao',ph:'88997 11223',plan:'Daily milk + Paneer',route:'R3 Gachibowli',w:'₹0',st:'Dues ₹120',sb:'b-red',lp:'₹0 · pending',c:'#e09a2d,#f0b95a'},
+  {n:'L. Menon',ph:'97411 88990',plan:'Daily milk 1L',route:'R3 Gachibowli',w:'₹320',st:'Paused',sb:'b-amber',lp:'₹150 · 24 May',c:'#1565d8,#5b9bff'},
+  {n:'J. Nair',ph:'90876 54321',plan:'Daily milk 1L',route:'R1 Banjara Hills',w:'₹540',st:'Active',sb:'b-green',lp:'₹90 · 27 May',c:'#13a06a,#3cce96'},
+];
+const invoices=[
+  {id:'INV-24851',n:'Priya Reddy',m:'UPI',mb:'b-blue',amt:'₹150',st:'Paid',sb:'b-green'},
+  {id:'INV-24852',n:'A. Sharma',m:'Razorpay',mb:'b-blue',amt:'₹240',st:'Paid',sb:'b-green'},
+  {id:'INV-24853',n:'K. Rao',m:'Cash',mb:'b-amber',amt:'₹120',st:'Pending',sb:'b-amber'},
+  {id:'INV-24854',n:'M. Devi',m:'Wallet',mb:'b-grey',amt:'₹240',st:'Paid',sb:'b-green'},
+  {id:'INV-24855',n:'J. Nair',m:'UPI',mb:'b-blue',amt:'₹90',st:'Paid',sb:'b-green'},
+];
+
+function initials(n){return n.split(' ').map(w=>w[0]).slice(0,2).join('');}
+/* renderers */
+document.getElementById('invCards').innerHTML=products.map(p=>`<div class="kpi"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="pdot" style="background:${p.c}22">${p.e}</div><div><div style="font-weight:700;font-size:14px">${p.n}</div><span class="badge ${p.sb}">${p.status}</span></div></div><div class="val" style="font-size:20px">${p.stock}</div><div class="lab" style="margin-top:2px">${p.unit} in stock</div><div class="prog" style="margin-top:10px"><i style="width:${p.cap}%;background:${p.c}"></i></div></div>`).join('');
+document.getElementById('batchTbl').innerHTML=`<thead><tr><th>Product</th><th>Batch</th><th>Mfg</th><th>Expiry</th><th class="num">Qty</th><th>Status</th></tr></thead><tbody>${batches.map(b=>`<tr><td><div class="cell-prod"><span class="pdot" style="background:${b.c}22">${b.e}</span><b>${b.p}</b></div></td><td class="mono">${b.b}</td><td>${b.mfg}</td><td>${b.exp}</td><td class="num">${b.qty}</td><td><span class="badge ${b.sb}">${b.st}</span></td></tr>`).join('')}</tbody>`;
+document.getElementById('custTbl').innerHTML=customers.map((c,i)=>`<tr onclick="openCust(${i})"><td><div class="uc"><span class="av" style="background:linear-gradient(135deg,${c.c})">${initials(c.n)}</span><div><b>${c.n}</b><div style="font-size:11px;color:var(--muted)" class="mono">${c.ph}</div></div></div></td><td>${c.plan}</td><td>${c.route}</td><td class="num">${c.w}</td><td><span class="badge ${c.sb}">${c.st}</span></td><td class="num">${c.lp}</td></tr>`).join('');
+document.getElementById('invoiceTbl').innerHTML=invoices.map(v=>`<tr onclick="toast('Opening ${v.id}…')"><td class="mono">${v.id}</td><td>${v.n}</td><td><span class="badge ${v.mb}">${v.m}</span></td><td class="num">${v.amt}</td><td><span class="badge ${v.sb}">${v.st}</span></td></tr>`).join('');
+
+/* charts */
+function stack(vals,cols,max){return `<div class="stack" style="height:100%">${vals.map((v,i)=>`<i style="height:${v/max*100}%;background:${cols[i]}"></i>`).reverse().join('')}</div>`;}
+const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const cols=['var(--blue)','var(--green)','var(--amber)','var(--violet)'];
+const orderData=[[180,60,20,15],[200,70,18,20],[190,65,22,18],[210,72,25,22],[230,80,28,26],[260,95,34,30],[150,55,16,14]];
+document.getElementById('orderBars').innerHTML=days.map((d,i)=>{const t=orderData[i].reduce((a,b)=>a+b);return `<div class="col">${stack(orderData[i],cols,360)}<span class="lab">${d}</span></div>`;}).join('');
+const repMonths=['Jan','Feb','Mar','Apr','May'];
+const repData=[[11,4,3,2],[12,4.2,3.1,2.1],[12.8,4.5,3.4,2.2],[13.5,4.8,3.6,2.4],[13,4.7,3.5,2.4]];
+document.getElementById('reportBars').innerHTML=repMonths.map((d,i)=>`<div class="col">${stack(repData[i].map(x=>x*10),cols,260)}<span class="lab">${d}</span></div>`).join('');
+const routes=[['R1 Banjara',14.2,92],['R5 Kukatpally',12.8,84],['R3 Gachibowli',11.1,72],['R6 Madhapur',13.5,88],['R2 Jubilee',12.0,79]];
+document.getElementById('routeEff').innerHTML=routes.map(r=>`<div class="rowline"><div class="t"><b>${r[0]}</b><span>${r[1]}/hr</span></div><div class="prog"><i style="width:${r[2]}%;background:var(--blue)"></i></div></div>`).join('');
+
+/* customer drawer */
+function openCust(i){const c=customers[i];document.getElementById('drTitle').textContent=c.n;document.getElementById('drSub').textContent=c.route+' · '+c.ph;
+  document.getElementById('drBody').innerHTML=`
+   <div style="display:flex;gap:9px;margin-bottom:16px"><span class="badge ${c.sb}">${c.st}</span><span class="badge b-grey">${c.plan}</span></div>
+   <div class="card pad" style="border-radius:14px;margin-bottom:14px;background:var(--surface-2)"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;color:var(--muted)">Wallet balance</div><div class="mono" style="font-size:24px;font-weight:600">${c.w}</div></div><div style="display:flex;gap:8px"><button class="btn sm pri" onclick="toast('Razorpay recharge link sent')">Recharge</button></div></div></div>
+   <div style="display:flex;gap:9px;margin-bottom:16px"><button class="btn" style="flex:1;justify-content:center" onclick="toast('Deliveries paused')">⏸ Pause</button><button class="btn" style="flex:1;justify-content:center" onclick="toast('Deliveries resumed')">▶ Resume</button><button class="btn" style="flex:1;justify-content:center" onclick="toast('Route reassigned')">↻ Route</button></div>
+   <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;margin-bottom:6px">Subscription</div>
+   <div class="kv"><span class="k">Plan</span><span class="v">${c.plan}</span></div>
+   <div class="kv"><span class="k">Route</span><span class="v">${c.route}</span></div>
+   <div class="kv"><span class="k">Last payment</span><span class="v">${c.lp}</span></div>
+   <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;margin:18px 0 6px">Payment history</div>
+   <div class="tline"><span class="dt">27 May</span><div style="flex:1">Daily delivery · UPI</div><b class="mono">−₹150</b></div>
+   <div class="tline"><span class="dt">26 May</span><div style="flex:1">Wallet recharge · Razorpay</div><b class="mono" style="color:var(--green)">+₹1,000</b></div>
+   <div class="tline"><span class="dt">25 May</span><div style="flex:1">Daily delivery · Wallet</div><b class="mono">−₹150</b></div>
+   <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;margin:18px 0 6px">Complaints</div>
+   <div class="alert" style="margin-bottom:0;background:var(--surface-2)"><div class="ic i-amber"><svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/></svg></div><div><h4>#C-1182 · Missing curd</h4><p>Resolved · ₹40 credited</p></div><span class="badge b-green" style="margin-left:auto">Closed</span></div>
+   <button class="btn pri" style="width:100%;justify-content:center;margin-top:18px" onclick="toast('Saved')">Save changes</button>`;
+  document.getElementById('drawerBg').classList.add('show');document.getElementById('drawer').classList.add('show');
+}
+function closeDrawer(){document.getElementById('drawerBg').classList.remove('show');document.getElementById('drawer').classList.remove('show');}
+let tt;function toast(m){const t=document.getElementById('toast');document.getElementById('toastMsg').textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200);}
+</script>
+</body>
+</html>

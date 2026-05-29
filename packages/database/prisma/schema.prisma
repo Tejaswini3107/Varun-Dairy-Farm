@@ -1,0 +1,306 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User & Auth ──────────────────────────────────────────────────────────────
+
+enum UserRole {
+  admin
+  manager
+  delivery_staff
+  customer
+}
+
+model User {
+  id          String    @id @default(cuid())
+  phone       String    @unique
+  email       String?   @unique
+  name        String
+  role        UserRole  @default(customer)
+  avatarUrl   String?
+  fcmToken    String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  customer    Customer?
+  staff       Staff?
+  otpCodes    OtpCode[]
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ─── Customer ─────────────────────────────────────────────────────────────────
+
+model Customer {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  address         String
+  landmark        String?
+  area            String
+  routeId         String
+  route           Route    @relation(fields: [routeId], references: [id])
+  walletBalance   Float    @default(0)
+  autoPay         Boolean  @default(false)
+  autoPayLimit    Float    @default(2000)
+  razorpayContact String?
+  status          CustomerStatus @default(active)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  subscriptions   Subscription[]
+  orders          Order[]
+  transactions    Transaction[]
+}
+
+enum CustomerStatus {
+  active
+  inactive
+  blocked
+}
+
+// ─── Product ──────────────────────────────────────────────────────────────────
+
+enum ProductCategory {
+  milk
+  curd
+  ghee
+  paneer
+  other
+}
+
+model Product {
+  id           String          @id @default(cuid())
+  name         String
+  description  String?
+  unit         String
+  pricePerUnit Float
+  imageUrl     String?
+  category     ProductCategory
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  subscriptions Subscription[]
+  orderItems    OrderItem[]
+  inventory     Inventory[]
+  spoilage      SpoilageLog[]
+}
+
+// ─── Subscription ─────────────────────────────────────────────────────────────
+
+enum SubscriptionFrequency {
+  daily
+  alternate
+  weekly
+  monthly
+}
+
+enum SubscriptionStatus {
+  active
+  paused
+  vacation
+  cancelled
+}
+
+model Subscription {
+  id               String               @id @default(cuid())
+  customerId       String
+  customer         Customer             @relation(fields: [customerId], references: [id])
+  productId        String
+  product          Product              @relation(fields: [productId], references: [id])
+  quantity         Float
+  frequency        SubscriptionFrequency @default(daily)
+  status           SubscriptionStatus    @default(active)
+  pauseUntil       DateTime?
+  vacationFrom     DateTime?
+  vacationUntil    DateTime?
+  nextDeliveryDate DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+}
+
+// ─── Route ────────────────────────────────────────────────────────────────────
+
+enum DeliveryStatus {
+  not_started
+  in_progress
+  completed
+}
+
+model Route {
+  id          String         @id @default(cuid())
+  name        String
+  area        String
+  agentId     String?
+  agent       Staff?         @relation(fields: [agentId], references: [id])
+  totalStops  Int            @default(0)
+  completedStops Int         @default(0)
+  status      DeliveryStatus @default(not_started)
+  date        DateTime       @default(now()) @db.Date
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  customers   Customer[]
+  orders      Order[]
+}
+
+// ─── Staff ────────────────────────────────────────────────────────────────────
+
+enum StaffStatus {
+  on_road
+  completed
+  off_duty
+}
+
+model Staff {
+  id        String      @id @default(cuid())
+  userId    String      @unique
+  user      User        @relation(fields: [userId], references: [id])
+  role      String      @default("delivery_agent")
+  status    StaffStatus @default(off_duty)
+  joinedAt  DateTime    @default(now())
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  routes    Route[]
+  orders    Order[]
+}
+
+// ─── Order ────────────────────────────────────────────────────────────────────
+
+enum OrderStatus {
+  pending
+  assigned
+  out_for_delivery
+  delivered
+  failed
+  cancelled
+}
+
+enum PaymentMethod {
+  wallet
+  upi
+  cash
+  razorpay
+}
+
+enum PaymentStatus {
+  pending
+  success
+  failed
+  refunded
+}
+
+model Order {
+  id                String        @id @default(cuid())
+  customerId        String
+  customer          Customer      @relation(fields: [customerId], references: [id])
+  routeId           String
+  route             Route         @relation(fields: [routeId], references: [id])
+  deliveryAgentId   String?
+  deliveryAgent     Staff?        @relation(fields: [deliveryAgentId], references: [id])
+  status            OrderStatus   @default(pending)
+  totalAmount       Float
+  collectedAmount   Float?
+  paymentMethod     PaymentMethod?
+  paymentStatus     PaymentStatus?
+  stopSequence      Int?
+  otp               String?
+  proofImageUrl     String?
+  deliveredAt       DateTime?
+  notes             String?
+  date              DateTime      @default(now()) @db.Date
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  items             OrderItem[]
+  transactions      Transaction[]
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  quantity   Float
+  unitPrice  Float
+  totalPrice Float
+}
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+
+enum StockStatus {
+  healthy
+  low
+  critical
+  expiring
+}
+
+model Inventory {
+  id            String      @id @default(cuid())
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  batchNumber   String
+  quantity      Float
+  capacity      Float
+  expiryDate    DateTime?
+  status        StockStatus @default(healthy)
+  reorderLevel  Float
+  lastUpdated   DateTime    @updatedAt
+  createdAt     DateTime    @default(now())
+}
+
+model SpoilageLog {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  quantity   Float
+  reason     String
+  valueLost  Float
+  loggedAt   DateTime @default(now())
+  loggedById String
+}
+
+// ─── Transactions / Billing ───────────────────────────────────────────────────
+
+enum TransactionType {
+  debit
+  credit
+  refund
+  auto_debit
+  recharge
+}
+
+model Transaction {
+  id                  String          @id @default(cuid())
+  customerId          String
+  customer            Customer        @relation(fields: [customerId], references: [id])
+  orderId             String?
+  order               Order?          @relation(fields: [orderId], references: [id])
+  type                TransactionType
+  method              PaymentMethod
+  amount              Float
+  status              PaymentStatus   @default(pending)
+  razorpayPaymentId   String?
+  razorpayOrderId     String?
+  notes               String?
+  createdAt           DateTime        @default(now())
+}

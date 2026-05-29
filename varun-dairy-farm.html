@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Varun Dairy Farm — Management Ecosystem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.7.0/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#FBF9F3; --surface:#FFFFFF; --surface-2:#F5F1E8; --surface-3:#FAF7F0;
+  --ink:#1A1D21; --muted:#6E7378; --faint:#9AA0A6;
+  --border:rgba(26,29,33,0.09); --border-2:rgba(26,29,33,0.16);
+  --blue:#1E63B0; --blue-bright:#2D7FD6; --blue-soft:#E7F0FB; --blue-ink:#0E3F76;
+  --green:#178A62; --green-soft:#E1F3EA; --green-ink:#0C5C41;
+  --amber:#C9810F; --amber-soft:#FBEFD8; --amber-ink:#8A5708;
+  --red:#C73E3A; --red-soft:#FBE9E8; --red-ink:#8E2724;
+  --shadow:0 1px 2px rgba(26,29,33,0.04),0 8px 24px -12px rgba(26,29,33,0.12);
+  --shadow-lg:0 4px 12px rgba(26,29,33,0.06),0 24px 48px -20px rgba(26,29,33,0.22);
+}
+[data-theme="dark"]{
+  --bg:#121518; --surface:#1B1F23; --surface-2:#23272C; --surface-3:#1E2226;
+  --ink:#ECEEF0; --muted:#9BA1A7; --faint:#6B7177;
+  --border:rgba(255,255,255,0.10); --border-2:rgba(255,255,255,0.18);
+  --blue:#4D97E0; --blue-bright:#62A6E8; --blue-soft:rgba(77,151,224,0.16); --blue-ink:#AFD2F4;
+  --green:#3FB488; --green-soft:rgba(63,180,136,0.16); --green-ink:#8FE0C0;
+  --amber:#E0A23E; --amber-soft:rgba(224,162,62,0.16); --amber-ink:#F4D49A;
+  --red:#E66360; --red-soft:rgba(230,99,96,0.16); --red-ink:#F6B6B4;
+  --shadow:0 1px 2px rgba(0,0,0,0.3),0 8px 24px -12px rgba(0,0,0,0.6);
+  --shadow-lg:0 4px 12px rgba(0,0,0,0.4),0 24px 48px -20px rgba(0,0,0,0.7);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--ink);
+  -webkit-font-smoothing:antialiased;line-height:1.5;transition:background .3s,color .3s}
+.mono{font-family:'JetBrains Mono',monospace;font-feature-settings:"tnum"}
+h1,h2,h3,h4{font-weight:600;letter-spacing:-0.01em}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+i.ti{display:inline-block;line-height:1}
+
+/* ---------- Top app bar ---------- */
+.appbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:18px;
+  padding:12px 22px;background:var(--surface);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-0.02em}
+.brand .mark{width:32px;height:32px;border-radius:9px;background:var(--blue);
+  display:grid;place-items:center;color:#fff;font-size:18px}
+.brand small{display:block;font-size:10.5px;font-weight:500;color:var(--muted);letter-spacing:0}
+.pswitch{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:11px;margin-left:6px}
+.pswitch button{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;
+  font-size:13px;font-weight:600;color:var(--muted);transition:.15s}
+.pswitch button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.pswitch button:hover:not(.on){color:var(--ink)}
+.spacer{flex:1}
+.iconbtn{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:19px;
+  color:var(--muted);transition:.15s}
+.iconbtn:hover{background:var(--surface-2);color:var(--ink)}
+
+/* ---------- Stage ---------- */
+.stage{display:none}
+.stage.on{display:block}
+.mobile-stage{min-height:calc(100vh - 63px);display:flex;align-items:flex-start;justify-content:center;
+  gap:40px;flex-wrap:wrap;padding:42px 22px 60px;
+  background:radial-gradient(circle at 50% 0,var(--surface-2),var(--bg) 70%)}
+
+/* ---------- Admin shell ---------- */
+.admin{display:grid;grid-template-columns:228px 1fr;min-height:calc(100vh - 63px)}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:18px 14px;
+  display:flex;flex-direction:column;gap:3px}
+.side-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--faint);margin:14px 10px 6px}
+.navitem{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;
+  font-size:13.5px;font-weight:500;color:var(--muted);transition:.13s;width:100%;text-align:left}
+.navitem i{font-size:18px}
+.navitem:hover{background:var(--surface-2);color:var(--ink)}
+.navitem.on{background:var(--blue-soft);color:var(--blue-ink);font-weight:600}
+.navitem .pill{margin-left:auto;font-size:10px;font-weight:700;background:var(--red);color:#fff;
+  padding:1px 6px;border-radius:20px}
+.content{padding:24px 30px 60px;overflow:auto}
+.scr{display:none}.scr.on{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.phead{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap}
+.phead h2{font-size:21px}
+.phead .sub{font-size:13px;color:var(--muted);margin-top:3px}
+.tools{display:flex;align-items:center;gap:10px}
+.search{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);
+  border-radius:10px;padding:8px 12px;font-size:13px;color:var(--muted);min-width:200px}
+.search input{border:none;background:none;outline:none;color:var(--ink);font-family:inherit;font-size:13px;width:100%}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:10px;font-size:13px;
+  font-weight:600;transition:.15s;border:1px solid transparent}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-bright)}
+.btn-ghost{background:var(--surface);border-color:var(--border-2);color:var(--ink)}
+.btn-ghost:hover{background:var(--surface-2)}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--green-ink);
+  background:var(--green-soft);padding:5px 11px;border-radius:20px}
+.live .dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ---------- Cards / grid ---------- */
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(4,1fr)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow)}
+.card.pad{padding:18px}
+.kpi{padding:17px 18px;display:flex;flex-direction:column;gap:3px}
+.kpi .lbl{font-size:12.5px;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:7px}
+.kpi .lbl .ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:15px}
+.kpi .val{font-size:27px;font-weight:600;letter-spacing:-0.02em;margin-top:6px}
+.kpi .delta{font-size:12px;font-weight:600}
+.up{color:var(--green-ink)}.down{color:var(--red-ink)}.warnc{color:var(--amber-ink)}
+.ct{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ct h3{font-size:15px}.ct .mini{font-size:12px;color:var(--blue);font-weight:600}
+.sectiontitle{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.05em;margin:26px 0 12px}
+
+/* feed + alerts */
+.feeditem{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.feeditem:last-child{border:none}
+.feeditem .fdot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none}
+.feeditem .ftime{margin-left:auto;font-size:11.5px;color:var(--faint);white-space:nowrap}
+.alertrow{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border)}
+.alertrow:last-child{border:none}
+.alertrow .nm{font-size:13.5px;font-weight:500}
+.alertrow .meta{font-size:11.5px;color:var(--muted)}
+.bar{height:6px;border-radius:6px;background:var(--surface-2);overflow:hidden;margin-top:5px}
+.bar > i{display:block;height:100%;border-radius:6px}
+
+/* table */
+table{width:100%;border-collapse:collapse}
+thead th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);
+  text-align:left;padding:0 14px 11px;font-weight:600}
+tbody td{padding:13px 14px;border-top:1px solid var(--border);font-size:13.5px;vertical-align:middle}
+tbody tr:hover{background:var(--surface-2)}
+.cust{display:flex;align-items:center;gap:11px}
+.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:12px;
+  font-weight:600;background:var(--blue-soft);color:var(--blue-ink);flex:none}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;
+  padding:3px 10px;border-radius:20px}
+.b-green{background:var(--green-soft);color:var(--green-ink)}
+.b-amber{background:var(--amber-soft);color:var(--amber-ink)}
+.b-blue{background:var(--blue-soft);color:var(--blue-ink)}
+.b-red{background:var(--red-soft);color:var(--red-ink)}
+.b-gray{background:var(--surface-2);color:var(--muted)}
+
+/* kanban */
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start}
+.kcol{background:var(--surface-2);border-radius:14px;padding:13px}
+.kcol h4{font-size:12.5px;display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.kcol h4 span{font-size:11px;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:20px}
+.kcard{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px;
+  margin-bottom:9px;box-shadow:var(--shadow);cursor:grab}
+.kcard:last-child{margin-bottom:0}
+.kcard .knm{font-size:13px;font-weight:600}
+.kcard .kmeta{font-size:11.5px;color:var(--muted);margin-top:3px}
+.kcard .ktags{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+.tag{font-size:10.5px;background:var(--surface-2);color:var(--muted);padding:2px 7px;border-radius:6px;font-weight:500}
+
+/* inventory cards */
+.invgrid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.invcard{padding:17px}
+.invtop{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.invtop .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:21px}
+.invtop .nm{font-size:14.5px;font-weight:600}
+.invtop .meta{font-size:11.5px;color:var(--muted)}
+.invstat{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:12px}
+.invstat b{color:var(--ink);font-weight:600}
+
+/* route tracking */
+.routerow{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--border);
+  border-radius:13px;margin-bottom:11px;background:var(--surface)}
+.routerow .ic{width:40px;height:40px;border-radius:11px;background:var(--blue-soft);color:var(--blue-ink);
+  display:grid;place-items:center;font-size:19px;flex:none}
+.routerow .rp{flex:1;min-width:0}
+.routerow .rnm{font-size:14px;font-weight:600}
+.routerow .rmeta{font-size:12px;color:var(--muted)}
+.prog{display:flex;align-items:center;gap:10px;min-width:160px}
+.prog .pct{font-size:13px;font-weight:600;min-width:38px;text-align:right}
+
+/* ---------- Phone ---------- */
+.phone{width:390px;max-width:100%;flex:none}
+.phone .label{text-align:center;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:14px;
+  display:flex;align-items:center;justify-content:center;gap:7px}
+.device{background:var(--surface);border-radius:38px;padding:13px;box-shadow:var(--shadow-lg);
+  border:1px solid var(--border)}
+.screen{background:var(--bg);border-radius:27px;overflow:hidden;height:740px;position:relative;
+  display:flex;flex-direction:column;border:1px solid var(--border)}
+.statusbar{display:flex;justify-content:space-between;align-items:center;padding:11px 22px 6px;
+  font-size:12px;font-weight:600;color:var(--ink);flex:none}
+.statusbar .r{display:flex;gap:6px;font-size:13px}
+.mbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.mscr{display:none;padding:6px 16px 18px}.mscr.on{display:block;animation:fade .22s ease}
+.botnav{flex:none;display:flex;justify-content:space-around;padding:9px 6px 14px;
+  background:var(--surface);border-top:1px solid var(--border)}
+.botnav button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;
+  font-weight:600;color:var(--faint);padding:4px 12px;border-radius:10px}
+.botnav button i{font-size:21px}
+.botnav button.on{color:var(--blue)}
+
+/* mobile generic */
+.mtop{display:flex;align-items:center;justify-content:space-between;padding:10px 2px 14px}
+.mtop .hi{font-size:12px;color:var(--muted)}
+.mtop .nm{font-size:17px;font-weight:700;letter-spacing:-0.02em}
+.mhero{border-radius:18px;padding:16px;color:#fff;background:var(--blue);margin-bottom:14px}
+.mhero.green{background:var(--green)}
+.mcard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px;margin-bottom:13px;box-shadow:var(--shadow)}
+.mrow{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.mrow:last-child{border:none}
+.stepper{display:flex;align-items:center;gap:13px}
+.stepper button{width:30px;height:30px;border-radius:9px;border:1px solid var(--border-2);
+  display:grid;place-items:center;font-size:17px;background:var(--surface);color:var(--ink)}
+.stepper button:active{transform:scale(.92)}
+.stepper .q{font-size:15px;font-weight:700;min-width:42px;text-align:center}
+.bigbtn{width:100%;padding:15px;border-radius:14px;font-size:15px;font-weight:700;color:#fff;
+  background:var(--green);display:flex;align-items:center;justify-content:center;gap:9px;margin-top:6px}
+.bigbtn:active{transform:scale(.98)}
+.bigbtn.blue{background:var(--blue)}
+.ghostbtn{flex:1;padding:11px;border-radius:11px;font-size:13px;font-weight:600;
+  border:1px solid var(--border-2);background:var(--surface);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;gap:6px}
+.otpwrap{display:flex;gap:9px;justify-content:center;margin:10px 0 4px}
+.otpwrap input{width:46px;height:54px;text-align:center;font-size:22px;font-weight:700;
+  border:1.5px solid var(--border-2);border-radius:12px;background:var(--surface-2);color:var(--ink);
+  outline:none;font-family:'JetBrains Mono',monospace}
+.otpwrap input:focus{border-color:var(--blue);background:var(--surface)}
+.storeitem{display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px;
+  border:1px solid var(--border);border-radius:14px;padding:14px 8px;background:var(--surface)}
+.storeitem .ic{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:23px;margin-bottom:2px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+
+/* ---------- Flow ---------- */
+.flowwrap{max-width:1060px;margin:0 auto;padding:34px 22px 70px}
+.flowhead{text-align:center;margin-bottom:26px}
+.flowhead h2{font-size:24px}
+.flowhead p{font-size:14px;color:var(--muted);margin-top:8px;max-width:620px;margin-left:auto;margin-right:auto}
+.flowctrl{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.dotrow{display:flex;gap:6px}
+.dotrow .d{width:8px;height:8px;border-radius:50%;background:var(--border-2);transition:.3s}
+.flowdesc{max-width:760px;margin:0 auto 22px;background:var(--surface);border:1px solid var(--border);
+  border-radius:13px;padding:14px 18px;font-size:14px;display:flex;align-items:center;gap:11px;min-height:54px;box-shadow:var(--shadow)}
+.flowdesc .ic{width:34px;height:34px;border-radius:10px;background:var(--blue-soft);color:var(--blue-ink);
+  display:grid;place-items:center;font-size:18px;flex:none}
+.flowgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.fpanel{background:var(--surface);border:1.5px solid var(--border);border-radius:18px;overflow:hidden;
+  transition:.35s;box-shadow:var(--shadow)}
+.fpanel.act{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-soft),var(--shadow-lg)}
+.fph{display:flex;align-items:center;gap:8px;padding:13px 15px;border-bottom:1px solid var(--border);
+  font-size:13px;font-weight:600}
+.fph .syn{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--green-ink);opacity:0;
+  display:flex;align-items:center;gap:4px;transition:.3s}
+.fpanel.act .fph .syn{opacity:1}
+.fbody{padding:6px 15px 14px}
+.fr{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.fr:last-child{border:none}.fr .k{color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){
+  .flash{animation:fl .9s ease-out}@keyframes fl{0%{transform:scale(1.02)}100%{transform:scale(1)}}
+}
+
+/* responsive */
+@media(max-width:1080px){.kpis{grid-template-columns:repeat(2,1fr)}.kanban,.flowgrid{grid-template-columns:1fr}.dual{grid-template-columns:1fr!important}}
+@media(max-width:860px){
+  .admin{grid-template-columns:1fr}
+  .sidebar{flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid var(--border);padding:10px}
+  .side-label{display:none}.navitem{width:auto}.navitem span.t{display:none}.navitem.on span.t{display:inline}
+  .pswitch button span{display:none}.brand small{display:none}
+  .content{padding:18px}
+}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="brand">
+    <div class="mark"><i class="ti ti-milk"></i></div>
+    <div>Varun Dairy Farm<small>Hyderabad · operations cloud</small></div>
+  </div>
+  <nav class="pswitch" aria-label="Platform switcher">
+    <button class="on" data-p="admin" onclick="showPlatform('admin')"><i class="ti ti-layout-dashboard"></i><span>Admin</span></button>
+    <button data-p="delivery" onclick="showPlatform('delivery')"><i class="ti ti-truck-delivery"></i><span>Delivery</span></button>
+    <button data-p="customer" onclick="showPlatform('customer')"><i class="ti ti-device-mobile"></i><span>Customer</span></button>
+    <button data-p="flow" onclick="showPlatform('flow')"><i class="ti ti-circles-relation"></i><span>Live flow</span></button>
+  </nav>
+  <div class="spacer"></div>
+  <button class="iconbtn" onclick="toggleTheme()" aria-label="Toggle theme" id="themebtn"><i class="ti ti-moon"></i></button>
+</header>
+
+<!-- ================= ADMIN ================= -->
+<section class="stage on" id="stage-admin">
+<div class="admin">
+  <aside class="sidebar">
+    <button class="navitem on" data-s="dash" onclick="adminNav('dash')"><i class="ti ti-layout-dashboard"></i><span class="t">Dashboard</span></button>
+    <div class="side-label">Operations</div>
+    <button class="navitem" data-s="cust" onclick="adminNav('cust')"><i class="ti ti-users"></i><span class="t">Customers</span></button>
+    <button class="navitem" data-s="inv" onclick="adminNav('inv')"><i class="ti ti-building-warehouse"></i><span class="t">Inventory</span></button>
+    <button class="navitem" data-s="ord" onclick="adminNav('ord')"><i class="ti ti-clipboard-list"></i><span class="t">Orders</span></button>
+    <button class="navitem" data-s="del" onclick="adminNav('del')"><i class="ti ti-route"></i><span class="t">Delivery</span></button>
+    <div class="side-label">Finance</div>
+    <button class="navitem" data-s="bill" onclick="adminNav('bill')"><i class="ti ti-receipt"></i><span class="t">Billing</span><span class="pill">3</span></button>
+    <button class="navitem" data-s="rep" onclick="adminNav('rep')"><i class="ti ti-chart-bar"></i><span class="t">Reports</span></button>
+    <div class="side-label">System</div>
+    <button class="navitem" data-s="staff" onclick="adminNav('staff')"><i class="ti ti-id-badge"></i><span class="t">Staff</span></button>
+    <button class="navitem" data-s="set" onclick="adminNav('set')"><i class="ti ti-settings"></i><span class="t">Settings</span></button>
+  </aside>
+
+  <main class="content">
+    <!-- DASHBOARD -->
+    <div class="scr on" id="s-dash">
+      <div class="phead">
+        <div><h2>Good morning, Varun</h2><div class="sub">Thursday, 29 May · 6 routes active across Hyderabad</div></div>
+        <div class="tools">
+          <span class="live"><span class="dot"></span> Live sync on</span>
+          <div class="search"><i class="ti ti-search"></i><input placeholder="Search customers, orders…"></div>
+        </div>
+      </div>
+      <div class="grid kpis">
+        <div class="card kpi"><span class="lbl"><span class="ic" style="background:var(--blue-soft);color:var(--blue-ink)"><i class="ti ti-clipboard-check"></i></span>Today's orders</span><span class="val mono">462</span><span class="delta up"><i class="ti ti-trending-up"></i> +12 vs yesterday</span></div>
+        <div class="card kpi"><span class="lbl"><span class="ic" style="background:var(--blue-soft);color:var(--blue-ink)"><i class="ti ti-bottle"></i></span>Milk volume</span><span class="val mono">1,840 L</span><span class="delta" style="color:var(--muted)">across 6 routes</span></div>
+        <div class="card kpi"><span class="lbl"><span class="ic" style="background:var(--green-soft);color:var(--green-ink)"><i class="ti ti-cash"></i></span>Collections</span><span class="val mono">₹43,910</span><span class="delta warnc">₹6,200 pending</span></div>
+        <div class="card kpi"><span class="lbl"><span class="ic" style="background:var(--green-soft);color:var(--green-ink)"><i class="ti ti-refresh"></i></span>Active subs</span><span class="val mono">451</span><span class="delta up">9 renewals due</span></div>
+      </div>
+
+      <div class="grid dual" style="grid-template-columns:1.7fr 1fr;margin-top:16px">
+        <div class="card pad">
+          <div class="ct"><h3>Revenue · last 7 days</h3><span class="mini">View report</span></div>
+          <svg viewBox="0 0 560 180" width="100%" height="180" preserveAspectRatio="none" aria-hidden="true">
+            <defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--blue)" stop-opacity="0.18"/><stop offset="1" stop-color="var(--blue)" stop-opacity="0"/></linearGradient></defs>
+            <polyline points="0,128 93,104 186,112 280,70 373,82 466,40 560,56" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <polygon points="0,128 93,104 186,112 280,70 373,82 466,40 560,56 560,180 0,180" fill="url(#rg)"/>
+            <circle cx="466" cy="40" r="4.5" fill="var(--blue)"/><circle cx="466" cy="40" r="9" fill="var(--blue)" opacity="0.18"/>
+          </svg>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--faint);margin-top:8px"><span>Fri</span><span>Sat</span><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span></div>
+        </div>
+        <div class="card pad">
+          <div class="ct"><h3>Delivery progress</h3></div>
+          <div style="display:grid;place-items:center;margin:6px 0 4px">
+            <svg viewBox="0 0 130 130" width="150" height="150">
+              <circle cx="65" cy="65" r="52" fill="none" stroke="var(--surface-2)" stroke-width="13"/>
+              <circle cx="65" cy="65" r="52" fill="none" stroke="var(--green)" stroke-width="13" stroke-linecap="round" stroke-dasharray="326" stroke-dashoffset="95" transform="rotate(-90 65 65)"/>
+              <text x="65" y="62" text-anchor="middle" font-size="28" font-weight="700" fill="var(--ink)" font-family="JetBrains Mono">71%</text>
+              <text x="65" y="80" text-anchor="middle" font-size="11" fill="var(--muted)">delivered</text>
+            </svg>
+          </div>
+          <div style="display:flex;justify-content:space-around;font-size:12.5px"><span style="color:var(--green-ink);font-weight:600">328 done</span><span style="color:var(--amber-ink);font-weight:600">134 pending</span></div>
+        </div>
+      </div>
+
+      <div class="grid dual" style="grid-template-columns:1fr 1fr;margin-top:16px">
+        <div class="card pad">
+          <div class="ct"><h3>Inventory alerts</h3><span class="mini">Manage stock</span></div>
+          <div class="alertrow"><span class="ic" style="font-size:20px;color:var(--amber)"><i class="ti ti-bottle"></i></span><div><div class="nm">Toned milk packets</div><div class="meta">Reorder threshold reached</div></div><span class="badge b-amber" style="margin-left:auto">200 left</span></div>
+          <div class="alertrow"><span class="ic" style="font-size:20px;color:var(--red)"><i class="ti ti-droplet"></i></span><div><div class="nm">Ghee tins · 500 ml</div><div class="meta">Critical — below safety stock</div></div><span class="badge b-red" style="margin-left:auto">12 left</span></div>
+          <div class="alertrow"><span class="ic" style="font-size:20px;color:var(--amber)"><i class="ti ti-cheese"></i></span><div><div class="nm">Paneer blocks</div><div class="meta">Expiring batch B-2241 tomorrow</div></div><span class="badge b-amber" style="margin-left:auto">low</span></div>
+        </div>
+        <div class="card pad">
+          <div class="ct"><h3>Live operations feed</h3><span class="live"><span class="dot"></span> real-time</span></div>
+          <div class="feeditem"><span class="fdot" style="background:var(--green)"></span><div>Sanjay completed Route 3 · stop 18</div><span class="ftime">2m ago</span></div>
+          <div class="feeditem"><span class="fdot" style="background:var(--blue)"></span><div>Customer Meera Reddy raised milk to 3 L</div><span class="ftime">5m ago</span></div>
+          <div class="feeditem"><span class="fdot" style="background:var(--amber)"></span><div>₹450 UPI collected · Madhapur</div><span class="ftime">8m ago</span></div>
+          <div class="feeditem"><span class="fdot" style="background:var(--blue)"></span><div>Amit started Route 5 · 38 stops</div><span class="ftime">12m ago</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUSTOMERS -->
+    <div class="scr" id="s-cust">
+      <div class="phead"><div><h2>Customers</h2><div class="sub">451 active subscriptions · 6 routes</div></div>
+        <div class="tools"><div class="search"><i class="ti ti-search"></i><input placeholder="Search by name or phone…"></div><button class="btn btn-primary"><i class="ti ti-plus"></i> Add customer</button></div></div>
+      <div class="card pad">
+        <table>
+          <thead><tr><th>Customer</th><th>Route</th><th>Plan</th><th>Wallet</th><th>Today</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><div class="cust"><div class="avatar">MR</div><div><div style="font-weight:600">Meera Reddy</div><div style="font-size:11.5px;color:var(--muted)">Kondapur · 98xxxxxx12</div></div></div></td><td>Route 3</td><td>Milk 3 L · daily</td><td class="mono">₹676</td><td>Milk ×3, Curd ×1</td><td><span class="badge b-green"><i class="ti ti-check"></i> Delivered</span></td></tr>
+            <tr><td><div class="cust"><div class="avatar" style="background:var(--green-soft);color:var(--green-ink)">VS</div><div><div style="font-weight:600">Vikram Singh</div><div style="font-size:11.5px;color:var(--muted)">Kondapur · 99xxxxxx04</div></div></div></td><td>Route 3</td><td>Milk 3 L · daily</td><td class="mono">₹240</td><td>Milk ×3</td><td><span class="badge b-amber"><i class="ti ti-clock"></i> Pending</span></td></tr>
+            <tr><td><div class="cust"><div class="avatar" style="background:var(--amber-soft);color:var(--amber-ink)">AR</div><div><div style="font-weight:600">Anjali Rao</div><div style="font-size:11.5px;color:var(--muted)">Gachibowli · 97xxxxxx88</div></div></div></td><td>Route 5</td><td>Paneer · weekly</td><td class="mono">₹1,120</td><td>Paneer ×1</td><td><span class="badge b-blue"><i class="ti ti-truck-delivery"></i> On the way</span></td></tr>
+            <tr><td><div class="cust"><div class="avatar">RM</div><div><div style="font-weight:600">Rahul Mehta</div><div style="font-size:11.5px;color:var(--muted)">Madhapur · 96xxxxxx51</div></div></div></td><td>Route 2</td><td>Milk 1 L · daily</td><td class="mono" style="color:var(--red-ink)">−₹120</td><td>Milk ×1</td><td><span class="badge b-red"><i class="ti ti-alert-triangle"></i> Dues</span></td></tr>
+            <tr><td><div class="cust"><div class="avatar" style="background:var(--green-soft);color:var(--green-ink)">KP</div><div><div style="font-weight:600">Kavya Patel</div><div style="font-size:11.5px;color:var(--muted)">Jubilee Hills · 90xxxxxx33</div></div></div></td><td>Route 1</td><td>Milk 2 L + Curd</td><td class="mono">₹540</td><td>Paused</td><td><span class="badge b-gray"><i class="ti ti-player-pause"></i> Vacation</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- INVENTORY -->
+    <div class="scr" id="s-inv">
+      <div class="phead"><div><h2>Inventory &amp; stock</h2><div class="sub">Live stock across products, packaging &amp; batches</div></div>
+        <div class="tools"><button class="btn btn-ghost"><i class="ti ti-history"></i> Movement log</button><button class="btn btn-primary"><i class="ti ti-plus"></i> Purchase entry</button></div></div>
+      <div class="grid invgrid">
+        <div class="card invcard"><div class="invtop"><span class="ic" style="background:var(--blue-soft);color:var(--blue-ink)"><i class="ti ti-bottle"></i></span><div><div class="nm">Toned milk</div><div class="meta">Batch B-2261 · today</div></div></div><div class="bar"><i style="width:32%;background:var(--amber)"></i></div><div class="invstat"><span>200 / 620 packets</span><span class="badge b-amber">Low</span></div></div>
+        <div class="card invcard"><div class="invtop"><span class="ic" style="background:var(--green-soft);color:var(--green-ink)"><i class="ti ti-bowl"></i></span><div><div class="nm">Curd</div><div class="meta">Batch B-2258 · exp 31 May</div></div></div><div class="bar"><i style="width:74%;background:var(--green)"></i></div><div class="invstat"><span>410 / 560 cups</span><span class="badge b-green">Healthy</span></div></div>
+        <div class="card invcard"><div class="invtop"><span class="ic" style="background:var(--amber-soft);color:var(--amber-ink)"><i class="ti ti-droplet"></i></span><div><div class="nm">Ghee · 500 ml</div><div class="meta">Batch B-2240</div></div></div><div class="bar"><i style="width:9%;background:var(--red)"></i></div><div class="invstat"><span>12 / 140 tins</span><span class="badge b-red">Critical</span></div></div>
+        <div class="card invcard"><div class="invtop"><span class="ic" style="background:var(--amber-soft);color:var(--amber-ink)"><i class="ti ti-cheese"></i></span><div><div class="nm">Paneer</div><div class="meta">Batch B-2241 · exp tomorrow</div></div></div><div class="bar"><i style="width:46%;background:var(--amber)"></i></div><div class="invstat"><span>64 / 140 blocks</span><span class="badge b-amber">Expiring</span></div></div>
+        <div class="card invcard"><div class="invtop"><span class="ic" style="background:var(--surface-2);color:var(--muted)"><i class="ti ti-package"></i></span><div><div class="nm">Packaging</div><div class="meta">Pouches &amp; caps</div></div></div><div class="bar"><i style="width:88%;background:var(--green)"></i></div><div class="invstat"><span>8,800 units</span><span class="badge b-green">Healthy</span></div></div>
+        <div class="card invcard"><div class="invtop"><span class="ic" style="background:var(--red-soft);color:var(--red-ink)"><i class="ti ti-trash"></i></span><div><div class="nm">Spoilage today</div><div class="meta">Logged at dispatch</div></div></div><div class="bar"><i style="width:6%;background:var(--red)"></i></div><div class="invstat"><span>14 L milk · ₹680</span><span class="badge b-gray">Recorded</span></div></div>
+      </div>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="scr" id="s-ord">
+      <div class="phead"><div><h2>Order fulfilment</h2><div class="sub">Today's run · 462 orders generated from subscriptions</div></div>
+        <div class="tools"><span class="live"><span class="dot"></span> auto-generated</span><button class="btn btn-primary"><i class="ti ti-wand"></i> Optimize routes</button></div></div>
+      <div class="kanban">
+        <div class="kcol"><h4>New <span>18</span></h4>
+          <div class="kcard"><div class="knm">Priya Sharma</div><div class="kmeta">Lotus Apts · Kondapur</div><div class="ktags"><span class="tag">Milk ×2</span><span class="tag">Curd ×1</span></div></div>
+          <div class="kcard"><div class="knm">Imran Khan</div><div class="kmeta">Hi-Tech City</div><div class="ktags"><span class="tag">Milk ×1</span></div></div>
+        </div>
+        <div class="kcol"><h4>Assigned <span>126</span></h4>
+          <div class="kcard"><div class="knm">Meera Reddy</div><div class="kmeta">Route 3 · Sanjay</div><div class="ktags"><span class="tag">Milk ×3</span><span class="tag">₹144</span></div></div>
+          <div class="kcard"><div class="knm">Vikram Singh</div><div class="kmeta">Route 3 · Sanjay</div><div class="ktags"><span class="tag">Milk ×3</span></div></div>
+        </div>
+        <div class="kcol"><h4>Out for delivery <span>134</span></h4>
+          <div class="kcard"><div class="knm">Anjali Rao</div><div class="kmeta">Route 5 · Amit</div><div class="ktags"><span class="tag">Paneer ×1</span><span class="tag">prepaid</span></div></div>
+        </div>
+        <div class="kcol"><h4>Delivered <span>328</span></h4>
+          <div class="kcard"><div class="knm">Kavya Patel</div><div class="kmeta">Route 1 · 7:02 AM</div><div class="ktags"><span class="tag">Milk ×2</span><span class="tag" style="background:var(--green-soft);color:var(--green-ink)">✓ ₹96</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DELIVERY -->
+    <div class="scr" id="s-del">
+      <div class="phead"><div><h2>Delivery operations</h2><div class="sub">Live route tracking · dispatch &amp; status</div></div>
+        <div class="tools"><span class="live"><span class="dot"></span> 4 agents on road</span></div></div>
+      <div class="card pad" style="margin-bottom:16px">
+        <div class="routerow"><span class="ic"><i class="ti ti-user"></i></span><div class="rp"><div class="rnm">Sanjay Kumar · Route 3</div><div class="rmeta">Kondapur · 42 stops · next: Priya Sharma</div></div><div class="prog"><div class="bar" style="flex:1"><i style="width:43%;background:var(--green)"></i></div><span class="pct mono">43%</span></div><span class="badge b-blue" style="margin-left:8px"><i class="ti ti-truck-delivery"></i> Live</span></div>
+        <div class="routerow"><span class="ic" style="background:var(--green-soft);color:var(--green-ink)"><i class="ti ti-user"></i></span><div class="rp"><div class="rnm">Amit Mishra · Route 5</div><div class="rmeta">Gachibowli · 38 stops · next: Anjali Rao</div></div><div class="prog"><div class="bar" style="flex:1"><i style="width:61%;background:var(--green)"></i></div><span class="pct mono">61%</span></div><span class="badge b-blue" style="margin-left:8px"><i class="ti ti-truck-delivery"></i> Live</span></div>
+        <div class="routerow"><span class="ic" style="background:var(--surface-2);color:var(--muted)"><i class="ti ti-user"></i></span><div class="rp"><div class="rnm">Deepak R · Route 1</div><div class="rmeta">Jubilee Hills · 44 stops · completed</div></div><div class="prog"><div class="bar" style="flex:1"><i style="width:100%;background:var(--green)"></i></div><span class="pct mono">100%</span></div><span class="badge b-green" style="margin-left:8px"><i class="ti ti-check"></i> Done</span></div>
+      </div>
+    </div>
+
+    <!-- BILLING -->
+    <div class="scr" id="s-bill">
+      <div class="phead"><div><h2>Billing &amp; payments</h2><div class="sub">UPI · Razorpay · cash collection</div></div>
+        <div class="tools"><button class="btn btn-ghost"><i class="ti ti-download"></i> Collection report</button><button class="btn btn-primary"><i class="ti ti-send"></i> Send reminders</button></div></div>
+      <div class="grid kpis" style="grid-template-columns:repeat(3,1fr)">
+        <div class="card kpi"><span class="lbl">Collected today</span><span class="val mono">₹43,910</span><span class="delta up">82% of billed</span></div>
+        <div class="card kpi"><span class="lbl">Pending dues</span><span class="val mono">₹6,200</span><span class="delta warnc">23 customers</span></div>
+        <div class="card kpi"><span class="lbl">Wallet float</span><span class="val mono">₹1.2L</span><span class="delta" style="color:var(--muted)">prepaid balance</span></div>
+      </div>
+      <div class="card pad" style="margin-top:16px">
+        <div class="ct"><h3>Recent transactions</h3><span class="mini">View all</span></div>
+        <table><thead><tr><th>Customer</th><th>Method</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead><tbody>
+          <tr><td>Meera Reddy</td><td><span class="badge b-blue">Wallet</span></td><td>Auto-debit</td><td class="mono">₹144</td><td><span class="badge b-green">Success</span></td></tr>
+          <tr><td>Anjali Rao</td><td><span class="badge b-blue">UPI</span></td><td>Recharge</td><td class="mono">₹1,000</td><td><span class="badge b-green">Success</span></td></tr>
+          <tr><td>Rahul Mehta</td><td><span class="badge b-gray">UPI</span></td><td>Due payment</td><td class="mono">₹120</td><td><span class="badge b-red">Failed</span></td></tr>
+          <tr><td>Vikram Singh</td><td><span class="badge b-amber">Cash</span></td><td>Collection</td><td class="mono">₹144</td><td><span class="badge b-amber">Pending sync</span></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="scr" id="s-rep">
+      <div class="phead"><div><h2>Reports &amp; analytics</h2><div class="sub">Sales, demand &amp; retention</div></div>
+        <div class="tools"><button class="btn btn-ghost"><i class="ti ti-calendar"></i> Last 30 days</button><button class="btn btn-ghost"><i class="ti ti-download"></i> Export</button></div></div>
+      <div class="grid dual" style="grid-template-columns:1fr 1fr">
+        <div class="card pad"><div class="ct"><h3>Product demand</h3></div>
+          <svg viewBox="0 0 320 170" width="100%" height="170" aria-hidden="true">
+            <g font-size="11" fill="var(--muted)" font-family="Plus Jakarta Sans">
+            <rect x="30" y="30" width="44" height="110" rx="5" fill="var(--blue)"/><text x="52" y="156" text-anchor="middle">Milk</text>
+            <rect x="100" y="78" width="44" height="62" rx="5" fill="var(--green)"/><text x="122" y="156" text-anchor="middle">Curd</text>
+            <rect x="170" y="104" width="44" height="36" rx="5" fill="var(--amber)"/><text x="192" y="156" text-anchor="middle">Ghee</text>
+            <rect x="240" y="92" width="44" height="48" rx="5" fill="var(--blue-bright)"/><text x="262" y="156" text-anchor="middle">Paneer</text>
+            </g>
+          </svg>
+        </div>
+        <div class="card pad"><div class="ct"><h3>Customer retention</h3></div>
+          <svg viewBox="0 0 320 170" width="100%" height="170" preserveAspectRatio="none" aria-hidden="true">
+            <polyline points="0,120 53,110 106,114 160,86 213,80 266,58 320,46" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round"/>
+            <polyline points="0,140 53,138 106,132 160,128 213,120 266,118 320,108" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="4 4"/>
+          </svg>
+          <div style="display:flex;gap:16px;font-size:12px;margin-top:6px"><span style="color:var(--green-ink);font-weight:600">● Retained 94%</span><span style="color:var(--muted)">— — Churn 6%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAFF -->
+    <div class="scr" id="s-staff">
+      <div class="phead"><div><h2>Staff management</h2><div class="sub">5 line managers · delivery agents</div></div><div class="tools"><button class="btn btn-primary"><i class="ti ti-plus"></i> Add staff</button></div></div>
+      <div class="card pad"><table><thead><tr><th>Agent</th><th>Route</th><th>Deliveries</th><th>Collection</th><th>Status</th></tr></thead><tbody>
+        <tr><td><div class="cust"><div class="avatar">SK</div><div style="font-weight:600">Sanjay Kumar</div></div></td><td>Route 3</td><td class="mono">18 / 42</td><td class="mono">₹4,180</td><td><span class="badge b-blue">On road</span></td></tr>
+        <tr><td><div class="cust"><div class="avatar" style="background:var(--green-soft);color:var(--green-ink)">AM</div><div style="font-weight:600">Amit Mishra</div></div></td><td>Route 5</td><td class="mono">23 / 38</td><td class="mono">₹5,320</td><td><span class="badge b-blue">On road</span></td></tr>
+        <tr><td><div class="cust"><div class="avatar" style="background:var(--amber-soft);color:var(--amber-ink)">DR</div><div style="font-weight:600">Deepak R</div></div></td><td>Route 1</td><td class="mono">44 / 44</td><td class="mono">₹9,900</td><td><span class="badge b-green">Completed</span></td></tr>
+      </tbody></table></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="scr" id="s-set">
+      <div class="phead"><div><h2>Settings &amp; roles</h2><div class="sub">Permissions, integrations &amp; preferences</div></div></div>
+      <div class="grid dual" style="grid-template-columns:1fr 1fr">
+        <div class="card pad"><div class="ct"><h3>Role permissions</h3></div>
+          <div class="mrow"><div><div style="font-weight:600;font-size:13.5px">Admin</div><div style="font-size:11.5px;color:var(--muted)">Full access</div></div><span class="badge b-green">All modules</span></div>
+          <div class="mrow"><div><div style="font-weight:600;font-size:13.5px">Operations manager</div><div style="font-size:11.5px;color:var(--muted)">No finance edit</div></div><span class="badge b-blue">7 modules</span></div>
+          <div class="mrow"><div><div style="font-weight:600;font-size:13.5px">Delivery staff</div><div style="font-size:11.5px;color:var(--muted)">Mobile app only</div></div><span class="badge b-gray">Route + collect</span></div>
+        </div>
+        <div class="card pad"><div class="ct"><h3>Payment integrations</h3></div>
+          <div class="mrow"><div style="font-weight:600;font-size:13.5px"><i class="ti ti-brand-google" style="color:var(--blue)"></i> UPI</div><span class="badge b-green">Connected</span></div>
+          <div class="mrow"><div style="font-weight:600;font-size:13.5px"><i class="ti ti-credit-card" style="color:var(--blue)"></i> Razorpay</div><span class="badge b-green">Connected</span></div>
+          <div class="mrow"><div style="font-weight:600;font-size:13.5px"><i class="ti ti-device-mobile" style="color:var(--blue)"></i> PhonePe</div><span class="badge b-gray">Set up</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</section>
+
+<!-- ================= DELIVERY APP ================= -->
+<section class="stage" id="stage-delivery">
+<div class="mobile-stage">
+  <div class="phone">
+    <div class="label"><i class="ti ti-truck-delivery"></i> Delivery Staff App</div>
+    <div class="device"><div class="screen">
+      <div class="statusbar"><span class="mono">7:18</span><span class="r"><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+      <div class="mbody">
+        <!-- Route dashboard -->
+        <div class="mscr on" id="d-route">
+          <div class="mhero">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div class="avatar" style="background:rgba(255,255,255,.22);color:#fff">SK</div>
+              <div><div style="font-weight:700">Sanjay Kumar</div><div style="font-size:11.5px;opacity:.85">Route 3 · Kondapur</div></div>
+              <i class="ti ti-bell" style="margin-left:auto;font-size:20px"></i>
+            </div>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1;background:rgba(255,255,255,.15);border-radius:11px;padding:10px"><div class="mono" style="font-size:20px;font-weight:700">42</div><div style="font-size:10.5px;opacity:.85">Total</div></div>
+              <div style="flex:1;background:rgba(255,255,255,.15);border-radius:11px;padding:10px"><div class="mono" style="font-size:20px;font-weight:700">18</div><div style="font-size:10.5px;opacity:.85">Done</div></div>
+              <div style="flex:1;background:rgba(255,255,255,.15);border-radius:11px;padding:10px"><div class="mono" style="font-size:20px;font-weight:700">24</div><div style="font-size:10.5px;opacity:.85">Left</div></div>
+            </div>
+          </div>
+          <div class="mcard" style="background:var(--green-soft);border-color:transparent;display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;color:var(--green-ink);font-weight:600"><i class="ti ti-cash"></i> Collected today</span><span class="mono" style="font-size:16px;font-weight:700;color:var(--green-ink)">₹4,180</span></div>
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin:4px 2px 8px">NEXT STOP</div>
+          <div class="mcard">
+            <div style="display:flex;justify-content:space-between"><div><div style="font-weight:700">Priya Sharma</div><div style="font-size:12px;color:var(--muted)">Flat 402, Lotus Apartments</div></div><span class="badge b-blue">Stop 19</span></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin:11px 0 13px"><span class="tag">Milk ×2</span><span class="tag">Curd ×1</span><span class="tag" style="background:var(--amber-soft);color:var(--amber-ink)">₹96 to collect</span></div>
+            <div style="display:flex;gap:8px">
+              <button class="bigbtn" style="margin-top:0" onclick="mNav('delivery','d-confirm')"><i class="ti ti-check"></i> Deliver</button>
+              <button class="ghostbtn" style="flex:none;width:48px" aria-label="Navigate"><i class="ti ti-navigation"></i></button>
+              <button class="ghostbtn" style="flex:none;width:48px" aria-label="Call"><i class="ti ti-phone"></i></button>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin:4px 2px 6px">UPCOMING</div>
+          <div class="mcard" style="padding:4px 15px">
+            <div class="mrow"><div style="display:flex;gap:11px;align-items:center"><span class="mono" style="color:var(--faint);width:20px">20</span><div><div style="font-weight:600;font-size:13.5px">Rahul Mehta</div><div style="font-size:11.5px;color:var(--muted)">Milk ×1 · ₹48</div></div></div><i class="ti ti-chevron-right" style="color:var(--faint)"></i></div>
+            <div class="mrow"><div style="display:flex;gap:11px;align-items:center"><span class="mono" style="color:var(--faint);width:20px">21</span><div><div style="font-weight:600;font-size:13.5px">Anjali Rao</div><div style="font-size:11.5px;color:var(--muted)">Paneer ×1 · prepaid</div></div></div><i class="ti ti-chevron-right" style="color:var(--faint)"></i></div>
+          </div>
+        </div>
+        <!-- Delivery confirmation -->
+        <div class="mscr" id="d-confirm">
+          <div class="mtop"><button class="ghostbtn" style="flex:none;width:42px" onclick="mNav('delivery','d-route')" aria-label="Back"><i class="ti ti-arrow-left"></i></button><div class="nm" style="font-size:16px">Confirm delivery</div><span style="width:42px"></span></div>
+          <div class="mcard" style="text-align:center"><div class="avatar" style="margin:0 auto 8px;width:48px;height:48px;font-size:16px">PS</div><div style="font-weight:700">Priya Sharma</div><div style="font-size:12px;color:var(--muted)">Flat 402, Lotus Apartments · Stop 19</div></div>
+          <div class="mcard"><div class="mrow"><span style="color:var(--muted);font-size:13px">Milk</span><b>×2</b></div><div class="mrow"><span style="color:var(--muted);font-size:13px">Curd</span><b>×1</b></div><div class="mrow"><span style="color:var(--muted);font-size:13px">Amount</span><b class="mono">₹96</b></div></div>
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin:2px 2px 8px;text-align:center">ENTER OTP SENT TO CUSTOMER</div>
+          <div class="otpwrap"><input maxlength="1" value="4" inputmode="numeric"><input maxlength="1" value="1" inputmode="numeric"><input maxlength="1" value="9" inputmode="numeric"><input maxlength="1" inputmode="numeric"></div>
+          <div style="display:flex;gap:9px;margin:14px 0"><button class="ghostbtn"><i class="ti ti-qrcode"></i> QR scan</button><button class="ghostbtn"><i class="ti ti-camera"></i> Photo proof</button></div>
+          <button class="bigbtn" onclick="mNav('delivery','d-pay')"><i class="ti ti-check"></i> Confirm &amp; collect</button>
+        </div>
+        <!-- Payment -->
+        <div class="mscr" id="d-pay">
+          <div class="mtop"><button class="ghostbtn" style="flex:none;width:42px" onclick="mNav('delivery','d-confirm')" aria-label="Back"><i class="ti ti-arrow-left"></i></button><div class="nm" style="font-size:16px">Collect payment</div><span style="width:42px"></span></div>
+          <div class="mhero green" style="text-align:center"><div style="font-size:12px;opacity:.85">Amount due</div><div class="mono" style="font-size:34px;font-weight:700;margin-top:4px">₹96</div></div>
+          <div class="pgrid" style="margin-bottom:13px">
+            <button class="storeitem" style="cursor:pointer"><span class="ic" style="background:var(--blue-soft);color:var(--blue-ink)"><i class="ti ti-qrcode"></i></span><div style="font-weight:600;font-size:13px">UPI / QR</div></button>
+            <button class="storeitem" style="cursor:pointer"><span class="ic" style="background:var(--green-soft);color:var(--green-ink)"><i class="ti ti-cash"></i></span><div style="font-weight:600;font-size:13px">Cash</div></button>
+          </div>
+          <button class="bigbtn" onclick="mNav('delivery','d-done')"><i class="ti ti-circle-check"></i> Mark paid</button>
+        </div>
+        <!-- Done -->
+        <div class="mscr" id="d-done" style="text-align:center;padding-top:90px">
+          <div style="width:84px;height:84px;border-radius:50%;background:var(--green-soft);color:var(--green);display:grid;place-items:center;font-size:44px;margin:0 auto 18px"><i class="ti ti-check"></i></div>
+          <h3 style="font-size:19px">Delivered &amp; synced</h3>
+          <p style="font-size:13px;color:var(--muted);max-width:240px;margin:8px auto 0">Customer notified · ₹96 recorded · admin collections updated in real time.</p>
+          <button class="bigbtn blue" style="max-width:240px;margin:24px auto 0" onclick="mNav('delivery','d-route')">Next stop →</button>
+        </div>
+      </div>
+      <nav class="botnav">
+        <button class="on" onclick="mNav('delivery','d-route',this)"><i class="ti ti-route"></i>Route</button>
+        <button onclick="mNav('delivery','d-route',this)"><i class="ti ti-map-2"></i>Map</button>
+        <button onclick="mNav('delivery','d-pay',this)"><i class="ti ti-cash"></i>Collect</button>
+        <button onclick="mNav('delivery','d-route',this)"><i class="ti ti-user"></i>Me</button>
+      </nav>
+    </div></div>
+  </div>
+</div>
+</section>
+
+<!-- ================= CUSTOMER APP ================= -->
+<section class="stage" id="stage-customer">
+<div class="mobile-stage">
+  <div class="phone">
+    <div class="label"><i class="ti ti-device-mobile"></i> Customer App</div>
+    <div class="device"><div class="screen">
+      <div class="statusbar"><span class="mono">7:18</span><span class="r"><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+      <div class="mbody">
+        <!-- Home -->
+        <div class="mscr on" id="c-home">
+          <div class="mtop"><div><div class="hi">Good morning</div><div class="nm">Meera Reddy</div></div><span class="badge b-green" style="font-size:13px;padding:6px 12px"><i class="ti ti-wallet"></i> <span class="mono" id="walletbal">₹676</span></span></div>
+          <div class="mhero">
+            <div style="display:flex;justify-content:space-between;margin-bottom:11px"><span style="font-size:12px;opacity:.9">Today's delivery</span><span class="badge" style="background:#fff;color:var(--green-ink);font-size:11px"><i class="ti ti-truck-delivery"></i> On the way</span></div>
+            <div style="display:flex;align-items:center;gap:12px"><div style="width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.2);display:grid;place-items:center;font-size:23px"><i class="ti ti-bottle"></i></div><div><div style="font-weight:700" id="todayitems">Milk ×3, Curd ×1</div><div style="font-size:11.5px;opacity:.85">Arriving by 7:25 AM · Sanjay</div></div></div>
+          </div>
+          <div class="mcard">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-weight:600;font-size:14px">My subscription</span><span style="font-size:12px;color:var(--blue);font-weight:600" onclick="mNav('customer','c-sub')">Manage</span></div>
+            <div class="mrow"><div style="display:flex;gap:10px;align-items:center"><i class="ti ti-bottle" style="font-size:19px;color:var(--muted)"></i><span style="font-size:13.5px">Toned milk · daily</span></div>
+              <div class="stepper"><button onclick="chgQty(-1)" aria-label="Decrease">−</button><span class="q mono" id="qty">3 L</span><button onclick="chgQty(1)" aria-label="Increase">+</button></div></div>
+            <div style="display:flex;gap:8px;margin-top:11px"><button class="ghostbtn"><i class="ti ti-player-pause"></i> Pause</button><button class="ghostbtn"><i class="ti ti-beach"></i> Vacation</button></div>
+          </div>
+          <div class="mcard">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-weight:600;font-size:14px">Add to today</span><span style="font-size:12px;color:var(--blue);font-weight:600" onclick="mNav('customer','c-store')">Store</span></div>
+            <div style="display:flex;gap:10px"><div class="storeitem" style="flex:1"><span class="ic" style="background:var(--green-soft);color:var(--green-ink)"><i class="ti ti-bowl"></i></span><div style="font-size:12px;font-weight:600">Curd</div><div class="mono" style="font-size:11px;color:var(--muted)">₹40</div></div><div class="storeitem" style="flex:1"><span class="ic" style="background:var(--amber-soft);color:var(--amber-ink)"><i class="ti ti-droplet"></i></span><div style="font-size:12px;font-weight:600">Ghee</div><div class="mono" style="font-size:11px;color:var(--muted)">₹320</div></div><div class="storeitem" style="flex:1"><span class="ic" style="background:var(--blue-soft);color:var(--blue-ink)"><i class="ti ti-cheese"></i></span><div style="font-size:12px;font-weight:600">Paneer</div><div class="mono" style="font-size:11px;color:var(--muted)">₹80</div></div></div>
+          </div>
+        </div>
+        <!-- Subscription -->
+        <div class="mscr" id="c-sub">
+          <div class="mtop"><div class="nm" style="font-size:18px">Subscription</div><i class="ti ti-calendar-event" style="font-size:20px;color:var(--muted)"></i></div>
+          <div class="mcard"><div class="mrow"><div style="display:flex;gap:10px;align-items:center"><i class="ti ti-bottle" style="font-size:19px;color:var(--blue)"></i><div><div style="font-weight:600;font-size:13.5px">Toned milk</div><div style="font-size:11.5px;color:var(--muted)">Daily · ₹48/L</div></div></div><div class="stepper"><button onclick="chgQty(-1)">−</button><span class="q mono" id="qty2">3 L</span><button onclick="chgQty(1)">+</button></div></div>
+            <div class="mrow"><div style="display:flex;gap:10px;align-items:center"><i class="ti ti-bowl" style="font-size:19px;color:var(--green)"></i><div><div style="font-weight:600;font-size:13.5px">Curd</div><div style="font-size:11.5px;color:var(--muted)">Daily · ₹40</div></div></div><div class="stepper"><button>−</button><span class="q mono">1</span><button>+</button></div></div>
+          </div>
+          <div class="mcard"><div style="font-weight:600;font-size:14px;margin-bottom:8px">Delivery controls</div>
+            <div style="display:flex;gap:8px;margin-bottom:8px"><button class="ghostbtn"><i class="ti ti-player-pause"></i> Pause delivery</button><button class="ghostbtn"><i class="ti ti-beach"></i> Vacation mode</button></div>
+            <button class="ghostbtn" style="width:100%"><i class="ti ti-clock"></i> Temporary change for tomorrow</button>
+          </div>
+          <div class="mcard" style="background:var(--blue-soft);border-color:transparent"><div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:var(--blue-ink)">Est. monthly bill</span><span class="mono" style="font-weight:700;color:var(--blue-ink)">₹5,520</span></div></div>
+        </div>
+        <!-- Store -->
+        <div class="mscr" id="c-store">
+          <div class="mtop"><div class="nm" style="font-size:18px">Store</div><i class="ti ti-search" style="font-size:20px;color:var(--muted)"></i></div>
+          <div class="pgrid">
+            <div class="mcard" style="margin:0;text-align:center"><span class="ic" style="background:var(--blue-soft);color:var(--blue-ink);width:54px;height:54px;border-radius:15px;display:grid;place-items:center;font-size:27px;margin:0 auto 8px"><i class="ti ti-bottle"></i></span><div style="font-weight:600;font-size:14px">Toned milk</div><div class="mono" style="font-size:12px;color:var(--muted);margin:2px 0 9px">₹48 / L</div><button class="ghostbtn" style="width:100%"><i class="ti ti-plus"></i> Add</button></div>
+            <div class="mcard" style="margin:0;text-align:center"><span class="ic" style="background:var(--green-soft);color:var(--green-ink);width:54px;height:54px;border-radius:15px;display:grid;place-items:center;font-size:27px;margin:0 auto 8px"><i class="ti ti-bowl"></i></span><div style="font-weight:600;font-size:14px">Curd</div><div class="mono" style="font-size:12px;color:var(--muted);margin:2px 0 9px">₹40</div><button class="ghostbtn" style="width:100%"><i class="ti ti-plus"></i> Add</button></div>
+            <div class="mcard" style="margin:0;text-align:center"><span class="ic" style="background:var(--amber-soft);color:var(--amber-ink);width:54px;height:54px;border-radius:15px;display:grid;place-items:center;font-size:27px;margin:0 auto 8px"><i class="ti ti-droplet"></i></span><div style="font-weight:600;font-size:14px">Pure ghee</div><div class="mono" style="font-size:12px;color:var(--muted);margin:2px 0 9px">₹320</div><button class="ghostbtn" style="width:100%"><i class="ti ti-plus"></i> Add</button></div>
+            <div class="mcard" style="margin:0;text-align:center"><span class="ic" style="background:var(--blue-soft);color:var(--blue-ink);width:54px;height:54px;border-radius:15px;display:grid;place-items:center;font-size:27px;margin:0 auto 8px"><i class="ti ti-cheese"></i></span><div style="font-weight:600;font-size:14px">Paneer</div><div class="mono" style="font-size:12px;color:var(--muted);margin:2px 0 9px">₹80</div><button class="ghostbtn" style="width:100%"><i class="ti ti-plus"></i> Add</button></div>
+          </div>
+        </div>
+        <!-- Wallet -->
+        <div class="mscr" id="c-wallet">
+          <div class="mtop"><div class="nm" style="font-size:18px">Wallet</div><i class="ti ti-receipt" style="font-size:20px;color:var(--muted)"></i></div>
+          <div class="mhero green" style="text-align:center"><div style="font-size:12px;opacity:.85">Available balance</div><div class="mono" style="font-size:34px;font-weight:700;margin:4px 0 12px">₹676</div><button class="bigbtn" style="background:rgba(255,255,255,.2);margin:0"><i class="ti ti-plus"></i> Recharge wallet</button></div>
+          <div class="mcard" style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:600;font-size:13.5px">Auto-pay</div><div style="font-size:11.5px;color:var(--muted)">UPI mandate · ₹2,000 cap</div></div><span class="badge b-green">On</span></div>
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin:4px 2px 6px">RECENT</div>
+          <div class="mcard" style="padding:4px 15px">
+            <div class="mrow"><div><div style="font-weight:600;font-size:13.5px">Milk delivery</div><div style="font-size:11.5px;color:var(--muted)">Today · auto-debit</div></div><span class="mono" style="color:var(--red-ink);font-weight:600">−₹144</span></div>
+            <div class="mrow"><div><div style="font-weight:600;font-size:13.5px">Wallet recharge</div><div style="font-size:11.5px;color:var(--muted)">28 May · UPI</div></div><span class="mono" style="color:var(--green-ink);font-weight:600">+₹500</span></div>
+          </div>
+        </div>
+      </div>
+      <nav class="botnav">
+        <button class="on" onclick="mNav('customer','c-home',this)"><i class="ti ti-home"></i>Home</button>
+        <button onclick="mNav('customer','c-sub',this)"><i class="ti ti-calendar-event"></i>Plan</button>
+        <button onclick="mNav('customer','c-store',this)"><i class="ti ti-building-store"></i>Store</button>
+        <button onclick="mNav('customer','c-wallet',this)"><i class="ti ti-wallet"></i>Wallet</button>
+      </nav>
+    </div></div>
+  </div>
+</div>
+</section>
+
+<!-- ================= FLOW ================= -->
+<section class="stage" id="stage-flow">
+<div class="flowwrap">
+  <div class="flowhead"><h2>One action, three apps, in real time</h2><p>Step through a live scenario and watch the same event ripple across the customer app, admin portal and delivery app — each holding the same source of truth.</p></div>
+  <div class="flowctrl">
+    <button class="btn btn-ghost" id="fprev" onclick="fstep(-1)"><i class="ti ti-arrow-left"></i> Back</button>
+    <div class="dotrow" id="fdots"></div>
+    <button class="btn btn-primary" id="fnext" onclick="fstep(1)">Next step <i class="ti ti-arrow-right"></i></button>
+  </div>
+  <div class="flowdesc"><span class="ic" id="fic"><i class="ti ti-player-play"></i></span><span id="fdesc"></span></div>
+  <div class="flowgrid">
+    <div class="fpanel" id="fp-cust"><div class="fph"><i class="ti ti-device-mobile" style="color:var(--blue)"></i> Customer app<span class="syn"><i class="ti ti-circle-check"></i> synced</span></div><div class="fbody">
+      <div class="fr"><span class="k">Subscription</span><b id="f-qty">Milk 2 L</b></div>
+      <div class="fr"><span class="k">Today</span><span id="f-today">Milk ×2, Curd ×1</span></div>
+      <div class="fr"><span class="k">Status</span><span class="badge b-blue" id="f-cstat">Scheduled</span></div>
+      <div class="fr"><span class="k">Wallet</span><b class="mono" id="f-wallet">₹820</b></div>
+    </div></div>
+    <div class="fpanel" id="fp-admin"><div class="fph"><i class="ti ti-layout-dashboard" style="color:var(--blue)"></i> Admin portal<span class="syn"><i class="ti ti-circle-check"></i> synced</span></div><div class="fbody">
+      <div class="fr"><span class="k">Order · Meera</span><b id="f-order">Milk ×2</b></div>
+      <div class="fr"><span class="k">Milk demand</span><span class="mono" id="f-vol">1,840 L</span></div>
+      <div class="fr"><span class="k">Collections</span><span class="mono" id="f-coll">₹43,910</span></div>
+      <div class="fr"><span class="k">Delivered</span><span class="mono" id="f-del">328 / 462</span></div>
+    </div></div>
+    <div class="fpanel" id="fp-deliv"><div class="fph"><i class="ti ti-truck-delivery" style="color:var(--blue)"></i> Delivery app<span class="syn"><i class="ti ti-circle-check"></i> synced</span></div><div class="fbody">
+      <div class="fr"><span class="k">Agent</span><span>Sanjay · R3</span></div>
+      <div class="fr"><span class="k">Stop · Meera</span><b id="f-items">Milk ×2 · ₹96</b></div>
+      <div class="fr"><span class="k">Stop status</span><span class="badge b-amber" id="f-dstat">Pending</span></div>
+      <div class="fr"><span class="k">Verify</span><span style="color:var(--muted)">OTP / QR</span></div>
+    </div></div>
+  </div>
+</div>
+</section>
+
+<script>
+function showPlatform(p){
+  document.querySelectorAll('.stage').forEach(s=>s.classList.remove('on'));
+  document.getElementById('stage-'+p).classList.add('on');
+  document.querySelectorAll('.pswitch button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+  window.scrollTo(0,0);
+}
+function adminNav(s){
+  document.querySelectorAll('.scr').forEach(x=>x.classList.remove('on'));
+  document.getElementById('s-'+s).classList.add('on');
+  document.querySelectorAll('.sidebar .navitem').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
+  document.querySelector('.content').scrollTo(0,0);
+}
+function mNav(app,scr,btn){
+  document.querySelectorAll('#stage-'+app+' .mscr').forEach(x=>x.classList.remove('on'));
+  document.getElementById(scr).classList.add('on');
+  if(btn){btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+  var body=document.querySelector('#stage-'+app+' .mbody'); if(body) body.scrollTo(0,0);
+}
+function toggleTheme(){
+  var h=document.documentElement, dark=h.getAttribute('data-theme')==='dark';
+  h.setAttribute('data-theme',dark?'light':'dark');
+  document.querySelector('#themebtn i').className=dark?'ti ti-moon':'ti ti-sun';
+}
+var qty=3;
+function chgQty(d){
+  qty=Math.max(1,Math.min(9,qty+d));
+  document.getElementById('qty').textContent=qty+' L';
+  document.getElementById('qty2').textContent=qty+' L';
+  document.getElementById('todayitems').textContent='Milk ×'+qty+', Curd ×1';
+}
+
+/* ---- Flow engine ---- */
+var E=function(id){return document.getElementById(id);};
+function setBadge(el,txt,cls){el.textContent=txt;el.className='badge '+cls;}
+var base={'f-qty':'Milk 2 L','f-today':'Milk ×2, Curd ×1','f-wallet':'₹820','f-order':'Milk ×2','f-vol':'1,840 L','f-coll':'₹43,910','f-del':'328 / 462','f-items':'Milk ×2 · ₹96'};
+var steps=[
+ {ic:'ti-player-play',d:'Start state — all three apps share one live source of truth.',act:[],run:function(){for(var k in base)E(k).textContent=base[k];setBadge(E('f-cstat'),'Scheduled','b-blue');setBadge(E('f-dstat'),'Pending','b-amber');}},
+ {ic:'ti-device-mobile',d:'Meera raises her daily milk from 2 L to 3 L in the customer app.',act:['fp-cust'],run:function(){E('f-qty').textContent='Milk 3 L';E('f-today').textContent='Milk ×3, Curd ×1';}},
+ {ic:'ti-refresh',d:'Her order and milk demand update instantly in the admin portal — no manual entry.',act:['fp-admin'],run:function(){E('f-order').textContent='Milk ×3';E('f-vol').textContent='1,841 L';}},
+ {ic:'ti-route',d:'Sanjay\u2019s route re-syncs. His stop for Meera now shows the new quantity and amount.',act:['fp-deliv'],run:function(){E('f-items').textContent='Milk ×3 · ₹144';}},
+ {ic:'ti-check',d:'Sanjay marks the stop delivered after OTP confirmation.',act:['fp-deliv'],run:function(){setBadge(E('f-dstat'),'Delivered','b-green');}},
+ {ic:'ti-circles-relation',d:'Meera gets a confirmation, ₹144 leaves her wallet, and admin collections + delivered count update automatically.',act:['fp-cust','fp-admin'],run:function(){setBadge(E('f-cstat'),'Delivered','b-green');E('f-wallet').textContent='₹676';E('f-coll').textContent='₹44,054';E('f-del').textContent='329 / 462';}}
+];
+var fi=0;
+function frender(){
+ var s=steps[fi];
+ ['fp-cust','fp-admin','fp-deliv'].forEach(function(p){E(p).classList.remove('act','flash');});
+ for(var k=0;k<=fi;k++)steps[k].run();
+ s.act.forEach(function(p){E(p).classList.add('act');void E(p).offsetWidth;E(p).classList.add('flash');});
+ E('fdesc').textContent=s.d;E('fic').innerHTML='<i class="ti '+s.ic+'"></i>';
+ E('fprev').style.opacity=fi===0?.4:1;E('fnext').style.opacity=fi===steps.length-1?.4:1;
+ [].forEach.call(E('fdots').children,function(d,n){d.style.background=n===fi?'var(--blue)':'var(--border-2)';});
+}
+function fstep(n){fi=Math.max(0,Math.min(steps.length-1,fi+n));frender();}
+steps.forEach(function(){var d=document.createElement('div');d.className='d';E('fdots').appendChild(d);});
+frender();
+</script>
+</body>
+</html>

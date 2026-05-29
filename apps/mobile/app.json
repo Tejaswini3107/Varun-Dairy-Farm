@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Varun Dairy Farm",
+    "slug": "varun-dairy-farm",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "varundairy",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FBF9F3"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "in.varundairy.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to capture delivery proof photos",
+        "NSLocationWhenInUseUsageDescription": "Used for real-time delivery tracking"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FBF9F3"
+      },
+      "package": "in.varundairy.app",
+      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#1E63B0"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

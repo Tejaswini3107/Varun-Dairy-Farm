@@ -1,0 +1,26 @@
+{
+  "name": "varun-dairy-farm",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Varun Dairy Farm — Full-stack operations cloud",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "db:push": "pnpm --filter @varun/database db:push",
+    "db:migrate": "pnpm --filter @varun/database db:migrate",
+    "db:seed": "pnpm --filter @varun/database db:seed",
+    "db:studio": "pnpm --filter @varun/database db:studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
