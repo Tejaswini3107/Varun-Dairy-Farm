@@ -43,7 +43,7 @@ export default function DeliveryLogin() {
       }
       localStorage.setItem("vdf_delivery_token", data.data.token);
       localStorage.setItem("vdf_delivery_user", JSON.stringify(data.data.user));
-      nav("/delivery-app/route");
+      nav("/delivery-app/home");
     } catch { setError("Verification failed"); }
     finally { setLoading(false); }
   }
