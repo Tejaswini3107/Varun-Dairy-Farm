@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
-function authH() { const t = localStorage.getItem("vdf_delivery_token"); return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) }; }
+function authH() {
+  const t = localStorage.getItem("vdf_delivery_token");
+  return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) };
+}
 
-type Step = "list" | "confirm" | "collect" | "done";
+type Step = "list" | "confirm" | "proof" | "collect" | "done";
 
 export default function DeliveryRoute() {
   const [data, setData] = useState<any>(null);
@@ -14,7 +17,10 @@ export default function DeliveryRoute() {
   const [otpError, setOtpError] = useState("");
   const [devOtp, setDevOtp] = useState<string | null>(null);
   const [payMethod, setPayMethod] = useState<"wallet" | "upi" | "cash" | null>(null);
+  const [proofImage, setProofImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   async function loadRoute() {
     const res = await fetch(`${BASE}/delivery/my-route`, { headers: authH() }).then(r => r.json()).catch(() => null);
@@ -27,8 +33,8 @@ export default function DeliveryRoute() {
 
   async function startDeliver(order: any) {
     setActiveOrder(order);
-    setOtp(["", "", "", ""]); setOtpError(""); setDevOtp(null); setPayMethod(null);
-    // Fetch dev OTP
+    setOtp(["", "", "", ""]); setOtpError(""); setDevOtp(null);
+    setPayMethod(null); setProofImage(null);
     const res = await fetch(`${BASE}/delivery/order-otp/${order.id}`, { headers: authH() }).then(r => r.json()).catch(() => null);
     setDevOtp(res?.data?.otp ?? null);
     setStep("confirm");
@@ -43,14 +49,44 @@ export default function DeliveryRoute() {
     }
   }
 
-  async function confirmOtp() {
+  function confirmOtp() {
     const code = otp.join("");
     if (code.length < 4) return;
+    if (devOtp && code !== devOtp) { setOtpError("Wrong OTP. Expected: " + devOtp); return; }
     setOtpError("");
-    // In dev mode, accept any OTP or the correct one
-    const expected = devOtp;
-    if (expected && code !== expected) {
-      setOtpError("Wrong OTP. Expected: " + expected); return;
+    setStep("proof");
+  }
+
+  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Compress to max 800px wide, JPEG quality 0.7
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const MAX = 800;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      setProofImage(canvas.toDataURL("image/jpeg", 0.7));
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  async function saveProofAndContinue() {
+    if (proofImage && activeOrder) {
+      setUploading(true);
+      try {
+        await fetch(`${BASE}/delivery/orders/${activeOrder.id}/proof`, {
+          method: "POST",
+          headers: authH(),
+          body: JSON.stringify({ imageBase64: proofImage }),
+        });
+      } catch { /* non-blocking */ }
+      setUploading(false);
     }
     setStep("collect");
   }
@@ -72,16 +108,22 @@ export default function DeliveryRoute() {
 
   const summary = data?.summary ?? { total: 0, done: 0, pending: 0, totalCollection: 0 };
   const orders = data?.orders ?? [];
-  const pendingOrders = orders.filter((o: any) => o.status !== "delivered" && o.status !== "failed" && o.status !== "cancelled");
+  const pendingOrders = orders.filter((o: any) => !["delivered", "failed", "cancelled"].includes(o.status));
   const user = (() => { try { return JSON.parse(localStorage.getItem("vdf_delivery_user") ?? "{}"); } catch { return {}; } })();
 
-  // ── List view ──────────────────────────────────────────────────────────────
+  // ── List ────────────────────────────────────────────────────────────────────
   if (step === "list") return (
     <div style={{ padding: 16, paddingBottom: 24 }}>
+      {/* Agent hero */}
       <div style={{ background: "var(--blue)", borderRadius: 18, padding: 16, marginBottom: 13, color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <div style={{ width: 46, height: 46, borderRadius: 23, background: "rgba(255,255,255,0.22)", display: "grid", placeItems: "center", fontWeight: 700 }}>{user.name?.slice(0, 2).toUpperCase() ?? "DL"}</div>
-          <div><div style={{ fontWeight: 700 }}>{user.name ?? "Delivery Agent"}</div><div style={{ fontSize: 12, opacity: 0.85 }}>{data?.route?.name ?? "Loading route…"} · {data?.route?.area ?? ""}</div></div>
+          <div style={{ width: 46, height: 46, borderRadius: 23, background: "rgba(255,255,255,0.22)", display: "grid", placeItems: "center", fontWeight: 700 }}>
+            {user.name?.slice(0, 2).toUpperCase() ?? "DL"}
+          </div>
+          <div>
+            <div style={{ fontWeight: 700 }}>{user.name ?? "Delivery Agent"}</div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>{data?.route?.name ?? "Loading route…"} · {data?.route?.area ?? ""}</div>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {[{ l: "Total", v: summary.total }, { l: "Done", v: summary.done }, { l: "Left", v: summary.pending }].map(s => (
@@ -143,7 +185,8 @@ export default function DeliveryRoute() {
                   style={{ flex: 1, height: 44, background: i === 0 ? "var(--green)" : "var(--surface-2)", color: i === 0 ? "#fff" : "var(--ink)", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
                   {i === 0 ? "✓ Deliver this stop" : "Deliver"}
                 </button>
-                <button style={{ width: 44, height: 44, border: "1px solid var(--border-2)", borderRadius: 11, background: "var(--surface)", fontSize: 18, cursor: "pointer" }}>📞</button>
+                <a href={`tel:${order.customer?.user?.phone}`}
+                  style={{ width: 44, height: 44, border: "1px solid var(--border-2)", borderRadius: 11, background: "var(--surface)", fontSize: 18, display: "grid", placeItems: "center", textDecoration: "none" }}>📞</a>
               </div>
             </div>
           ))}
@@ -181,13 +224,13 @@ export default function DeliveryRoute() {
 
       {devOtp && (
         <div style={{ background: "var(--amber-soft)", border: "1px solid var(--amber)", borderRadius: 10, padding: "10px 14px", marginBottom: 13 }}>
-          <span style={{ color: "var(--amber-ink)", fontSize: 13 }}>🔑 Customer OTP: </span>
+          <span style={{ color: "var(--amber-ink)", fontSize: 13 }}>🔑 OTP: </span>
           <b onClick={() => setOtp(devOtp.split(""))} style={{ fontFamily: "monospace", fontSize: 20, letterSpacing: 4, color: "var(--amber-ink)", cursor: "pointer" }}>{devOtp}</b>
           <span style={{ color: "var(--amber-ink)", fontSize: 11, marginLeft: 8 }}>(click to fill)</span>
         </div>
       )}
 
-      <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, letterSpacing: 1, textAlign: "center", marginBottom: 10 }}>ENTER OTP SENT TO CUSTOMER</div>
+      <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, letterSpacing: 1, textAlign: "center", marginBottom: 10 }}>ENTER OTP FROM CUSTOMER</div>
       <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 14 }}>
         {otp.map((d, i) => (
           <input key={i} className="otp-box" value={d} onChange={e => setDigit(i, e.target.value)} maxLength={1}
@@ -198,7 +241,47 @@ export default function DeliveryRoute() {
       {otpError && <p style={{ color: "var(--red)", fontSize: 13, textAlign: "center", marginBottom: 10 }}>{otpError}</p>}
       <button onClick={confirmOtp} disabled={otp.join("").length < 4}
         style={{ width: "100%", height: 52, background: "var(--green)", color: "#fff", border: "none", borderRadius: 14, fontSize: 15, fontWeight: 700, cursor: "pointer", opacity: otp.join("").length === 4 ? 1 : 0.5 }}>
-        ✓ Confirm &amp; collect payment
+        ✓ OTP verified — next
+      </button>
+    </div>
+  );
+
+  // ── Photo proof ─────────────────────────────────────────────────────────────
+  if (step === "proof") return (
+    <div style={{ padding: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+        <button onClick={() => setStep("confirm")} style={{ width: 40, height: 40, borderRadius: 11, border: "1px solid var(--border-2)", background: "var(--surface)", fontSize: 20, cursor: "pointer" }}>←</button>
+        <div style={{ fontSize: 16, fontWeight: 700 }}>Delivery proof</div>
+      </div>
+
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 15, marginBottom: 16 }}>
+        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{activeOrder?.customer?.user?.name}</div>
+        <div style={{ fontSize: 12, color: "var(--muted)" }}>{activeOrder?.customer?.address}</div>
+      </div>
+
+      {/* Photo capture */}
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handlePhoto} />
+
+      {proofImage ? (
+        <div style={{ marginBottom: 16 }}>
+          <img src={proofImage} alt="proof" style={{ width: "100%", borderRadius: 14, maxHeight: 280, objectFit: "cover" }} />
+          <button onClick={() => { setProofImage(null); fileRef.current?.click(); }}
+            style={{ marginTop: 10, width: "100%", height: 40, border: "1px solid var(--border-2)", borderRadius: 11, background: "var(--surface)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            📷 Retake photo
+          </button>
+        </div>
+      ) : (
+        <button onClick={() => fileRef.current?.click()}
+          style={{ width: "100%", height: 120, border: "2px dashed var(--border-2)", borderRadius: 16, background: "var(--surface-2)", fontSize: 14, color: "var(--muted)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+          <span style={{ fontSize: 36 }}>📷</span>
+          <span style={{ fontWeight: 600 }}>Take delivery photo</span>
+          <span style={{ fontSize: 12 }}>Optional but recommended</span>
+        </button>
+      )}
+
+      <button onClick={saveProofAndContinue} disabled={uploading}
+        style={{ width: "100%", height: 52, background: "var(--blue)", color: "#fff", border: "none", borderRadius: 14, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+        {uploading ? "Uploading…" : proofImage ? "Save proof & collect payment →" : "Skip & collect payment →"}
       </button>
     </div>
   );
@@ -207,13 +290,14 @@ export default function DeliveryRoute() {
   if (step === "collect") return (
     <div style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
-        <button onClick={() => setStep("confirm")} style={{ width: 40, height: 40, borderRadius: 11, border: "1px solid var(--border-2)", background: "var(--surface)", fontSize: 20, cursor: "pointer" }}>←</button>
+        <button onClick={() => setStep("proof")} style={{ width: 40, height: 40, borderRadius: 11, border: "1px solid var(--border-2)", background: "var(--surface)", fontSize: 20, cursor: "pointer" }}>←</button>
         <div style={{ fontSize: 16, fontWeight: 700 }}>Collect payment</div>
       </div>
       <div style={{ background: "var(--green)", borderRadius: 18, padding: 20, textAlign: "center", marginBottom: 20, color: "#fff" }}>
         <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 4 }}>Amount due</div>
         <div style={{ fontSize: 40, fontWeight: 700, fontFamily: "monospace" }}>₹{activeOrder?.totalAmount?.toLocaleString("en-IN")}</div>
         <div style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>{activeOrder?.customer?.user?.name}</div>
+        {proofImage && <div style={{ fontSize: 11, opacity: 0.75, marginTop: 4 }}>📷 Proof captured</div>}
       </div>
       <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, letterSpacing: 1, marginBottom: 12 }}>SELECT PAYMENT METHOD</div>
       <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
@@ -238,7 +322,8 @@ export default function DeliveryRoute() {
       <div style={{ width: 96, height: 96, borderRadius: 48, background: "var(--green-soft)", display: "grid", placeItems: "center", fontSize: 48, marginBottom: 20 }}>✓</div>
       <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 10 }}>Delivered &amp; synced!</div>
       <div style={{ fontSize: 14, color: "var(--muted)", textAlign: "center", maxWidth: 260, lineHeight: 1.5, marginBottom: 6 }}>
-        Customer notified · ₹{activeOrder?.totalAmount?.toLocaleString("en-IN")} recorded · Admin dashboard updated.
+        Customer notified · ₹{activeOrder?.totalAmount?.toLocaleString("en-IN")} recorded
+        {proofImage ? " · Photo saved" : ""}
       </div>
       <button onClick={backToList}
         style={{ marginTop: 24, background: "var(--blue)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>

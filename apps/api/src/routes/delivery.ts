@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { db } from "@varun/database";
 import { requireAuth, requireRole, AuthRequest } from "../middleware/auth";
+import { sendPushNotification } from "../services/notifications";
 
 export const deliveryRouter = Router();
 deliveryRouter.use(requireAuth);
@@ -119,23 +120,28 @@ deliveryRouter.post("/routes/auto-assign", requireRole("admin", "manager"), asyn
     for (const route of routes) {
       if (!route.agentId) continue;
 
-      // Reset route status for new day
       await db.route.update({
         where: { id: route.id },
         data: { status: "not_started", startedAt: null, completedAt: null, completedStops: 0 },
       });
 
-      // Assign pending orders for this route to the default agent
       const result = await db.order.updateMany({
-        where: {
-          routeId: route.id,
-          date: { gte: today, lt: tomorrow },
-          status: "pending",
-        },
+        where: { routeId: route.id, date: { gte: today, lt: tomorrow }, status: "pending" },
         data: { deliveryAgentId: route.agentId, status: "assigned" },
       });
-
       assigned += result.count;
+
+      // Push notification to the assigned agent
+      const staff = await db.staff.findUnique({
+        where: { id: route.agentId },
+        include: { user: { select: { name: true, fcmToken: true } } },
+      });
+      if (staff?.user.fcmToken) {
+        sendPushNotification(staff.user.fcmToken, {
+          title: "Route assigned 🛵",
+          body: `${route.name} · ${result.count} deliveries ready. Tap to start.`,
+        }, { routeId: route.id }).catch(() => {});
+      }
     }
 
     res.json({ message: `Auto-assigned ${assigned} orders across ${routes.length} routes` });
@@ -162,8 +168,20 @@ deliveryRouter.patch("/routes/:id/assign-agent", requireRole("admin", "manager")
 
     const route = await db.route.findUnique({
       where: { id: req.params.id },
-      include: { agent: { include: { user: { select: { name: true, phone: true } } } } },
+      include: { agent: { include: { user: { select: { name: true, phone: true, fcmToken: true } } } } },
     });
+
+    // Push notification to newly assigned agent
+    if (route?.agent?.user.fcmToken) {
+      const orderCount = await db.order.count({
+        where: { routeId: req.params.id, date: { gte: today, lt: tomorrow }, status: "assigned" },
+      });
+      sendPushNotification(route.agent.user.fcmToken, {
+        title: "Route assigned 🛵",
+        body: `${route.name} · ${orderCount} deliveries ready. Tap to start.`,
+      }, { routeId: route.id }).catch(() => {});
+    }
+
     res.json({ data: route });
   } catch (err) { next(err); }
 });
@@ -251,5 +269,125 @@ deliveryRouter.post("/agent-location", async (req: AuthRequest, res, next) => {
   try {
     const { lat, lng } = z.object({ lat: z.number(), lng: z.number() }).parse(req.body);
     res.json({ data: { lat, lng, agentId: req.user?.staffId } });
+  } catch (err) { next(err); }
+});
+
+// ── Attendance ────────────────────────────────────────────────────────────────
+
+// POST /delivery/attendance/check-in
+deliveryRouter.post("/attendance/check-in", async (req: AuthRequest, res, next) => {
+  try {
+    const staffId = req.user?.staffId;
+    if (!staffId) { res.status(403).json({ error: "Not a delivery agent" }); return; }
+
+    const { lat, lng } = z.object({ lat: z.number().optional(), lng: z.number().optional() }).parse(req.body);
+
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Prevent duplicate check-in for today
+    const existing = await db.attendance.findFirst({ where: { staffId, date: { gte: today, lt: tomorrow } } });
+    if (existing) {
+      res.json({ data: existing, alreadyCheckedIn: true });
+      return;
+    }
+
+    const attendance = await db.attendance.create({
+      data: { staffId, checkIn: new Date(), checkInLat: lat, checkInLng: lng },
+    });
+
+    // Mark staff as on_road
+    await db.staff.update({ where: { id: staffId }, data: { status: "on_road" } });
+
+    res.status(201).json({ data: attendance });
+  } catch (err) { next(err); }
+});
+
+// POST /delivery/attendance/check-out
+deliveryRouter.post("/attendance/check-out", async (req: AuthRequest, res, next) => {
+  try {
+    const staffId = req.user?.staffId;
+    if (!staffId) { res.status(403).json({ error: "Not a delivery agent" }); return; }
+
+    const { lat, lng } = z.object({ lat: z.number().optional(), lng: z.number().optional() }).parse(req.body);
+
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const existing = await db.attendance.findFirst({ where: { staffId, date: { gte: today, lt: tomorrow } } });
+    if (!existing) { res.status(400).json({ error: "Not checked in today" }); return; }
+    if (existing.checkOut) { res.json({ data: existing, alreadyCheckedOut: true }); return; }
+
+    const attendance = await db.attendance.update({
+      where: { id: existing.id },
+      data: { checkOut: new Date(), checkOutLat: lat, checkOutLng: lng },
+    });
+
+    await db.staff.update({ where: { id: staffId }, data: { status: "completed" } });
+
+    res.json({ data: attendance });
+  } catch (err) { next(err); }
+});
+
+// GET /delivery/attendance/today — logged-in agent's attendance for today
+deliveryRouter.get("/attendance/today", async (req: AuthRequest, res, next) => {
+  try {
+    const staffId = req.user?.staffId;
+    if (!staffId) { res.status(403).json({ error: "Not a delivery agent" }); return; }
+
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const attendance = await db.attendance.findFirst({ where: { staffId, date: { gte: today, lt: tomorrow } } });
+    res.json({ data: attendance ?? null });
+  } catch (err) { next(err); }
+});
+
+// GET /delivery/attendance — admin view (all staff, date range)
+deliveryRouter.get("/attendance", requireRole("admin", "manager"), async (req, res, next) => {
+  try {
+    const { date, staffId } = req.query as Record<string, string>;
+    const where: any = {};
+    if (staffId) where.staffId = staffId;
+    if (date) {
+      const d = new Date(date); d.setHours(0, 0, 0, 0);
+      const dn = new Date(d); dn.setDate(dn.getDate() + 1);
+      where.date = { gte: d, lt: dn };
+    } else {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+      where.date = { gte: today, lt: tomorrow };
+    }
+
+    const records = await db.attendance.findMany({
+      where,
+      include: { staff: { include: { user: { select: { name: true, phone: true } } } } },
+      orderBy: { checkIn: "asc" },
+    });
+
+    res.json({ data: records });
+  } catch (err) { next(err); }
+});
+
+// ── Delivery proof ────────────────────────────────────────────────────────────
+
+// POST /delivery/orders/:id/proof — save base64 photo as delivery proof
+deliveryRouter.post("/orders/:id/proof", async (req: AuthRequest, res, next) => {
+  try {
+    const { imageBase64 } = z.object({ imageBase64: z.string().min(10) }).parse(req.body);
+
+    // Validate it looks like a base64 image
+    if (!imageBase64.startsWith("data:image/")) {
+      res.status(400).json({ error: "imageBase64 must be a data URL (data:image/...)" });
+      return;
+    }
+
+    const order = await db.order.update({
+      where: { id: req.params.id },
+      data: { proofImageUrl: imageBase64 },
+      select: { id: true, proofImageUrl: true },
+    });
+
+    res.json({ data: order });
   } catch (err) { next(err); }
 });

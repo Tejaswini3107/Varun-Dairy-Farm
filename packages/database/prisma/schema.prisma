@@ -189,8 +189,25 @@ model Staff {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  routes    Route[]
-  orders    Order[]
+  routes      Route[]
+  orders      Order[]
+  attendances Attendance[]
+}
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
+
+model Attendance {
+  id           String    @id @default(cuid())
+  staffId      String
+  staff        Staff     @relation(fields: [staffId], references: [id])
+  date         DateTime  @default(now()) @db.Date
+  checkIn      DateTime
+  checkOut     DateTime?
+  checkInLat   Float?
+  checkInLng   Float?
+  checkOutLat  Float?
+  checkOutLng  Float?
+  createdAt    DateTime  @default(now())
 }
 
 // ─── Order ────────────────────────────────────────────────────────────────────
