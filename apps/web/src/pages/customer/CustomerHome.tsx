@@ -7,34 +7,49 @@ function authH(): Record<string, string> {
   return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) };
 }
 
+const EMOJI: Record<string, string> = { milk: "🥛", curd: "🥣", ghee: "🫙", paneer: "🧀" };
+const FREQ_LABEL: Record<string, string> = { daily: "Daily", alternate: "Alt. day", weekly: "Weekly", monthly: "Monthly" };
+function stepFor(unit: string) { return unit === "L" ? 0.5 : 1; }
+function fmtQty(qty: number, unit: string) { return `${qty % 1 === 0 ? qty : qty.toFixed(1)} ${unit}`; }
+
 export default function CustomerHome({ user }: { user: any }) {
   const nav = useNavigate();
   const [customer, setCustomer] = useState<any>(null);
   const [order, setOrder] = useState<any>(null);
   const [subs, setSubs] = useState<any[]>([]);
+  const [tomorrow, setTomorrow] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
 
+  // Vacation modal state
+  const [storeProducts, setStoreProducts] = useState<any[]>([]);
+
+  const [vacModal, setVacModal] = useState(false);
+  const [vacFrom, setVacFrom] = useState("");
+  const [vacUntil, setVacUntil] = useState("");
+  const [vacSaving, setVacSaving] = useState(false);
+  const [toast, setToast] = useState("");
+
+  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(""), 2500); }
+
   async function loadData() {
     try {
-      // Load subscriptions (uses JWT customerId — no user.customerId needed)
-      const subsRes = await fetch(`${BASE}/subscriptions/my`, { headers: authH() });
-      if (subsRes.ok) { const d = await subsRes.json(); setSubs(d.data ?? []); }
-
-      // Load customer profile if we have customerId
-      const cid = user?.customerId;
-      if (cid) {
-        const custRes = await fetch(`${BASE}/customers/${cid}`, { headers: authH() });
-        if (custRes.ok) { const d = await custRes.json(); setCustomer(d.data); }
+      const [meRes, tmrRes] = await Promise.all([
+        fetch(`${BASE}/customers/me`, { headers: authH() }),
+        fetch(`${BASE}/customers/me/tomorrow`, { headers: authH() }),
+      ]);
+      if (meRes.ok) {
+        const d = await meRes.json();
+        const c = d.data;
+        setCustomer(c);
+        setSubs(c?.subscriptions ?? []);
+        setOrder(c?.orders?.[0] ?? null);
       }
-
-      // Generate/fetch today's order — customerId comes from JWT on server side
-      const body = cid ? JSON.stringify({ customerId: cid }) : "{}";
-      const oRes = await fetch(`${BASE}/orders/generate-for-customer`, {
-        method: "POST", headers: authH(), body,
-      });
-      if (oRes.ok) { const d = await oRes.json(); setOrder(d.data); }
+      if (tmrRes.ok) {
+        const d = await tmrRes.json();
+        setTomorrow(d.data ?? []);
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -42,42 +57,86 @@ export default function CustomerHome({ user }: { user: any }) {
     }
   }
 
-  useEffect(() => { loadData(); }, []);
-  // Poll every 8s for delivery status updates
+  // Load store products once
+  useEffect(() => {
+    fetch(`${BASE}/products`, { headers: authH() })
+      .then(r => r.json())
+      .then(d => setStoreProducts((d.data ?? []).filter((p: any) => p.isActive).slice(0, 3)))
+      .catch(() => {});
+  }, []);
+
+  // Initial load + ensure today's order exists
+  useEffect(() => {
+    loadData();
+    // Seed today's order if it doesn't exist yet (idempotent)
+    fetch(`${BASE}/orders/recalculate-for-customer`, {
+      method: "POST", headers: authH(), body: "{}",
+    }).then(r => r.json()).then(d => { if (d.data) setOrder(d.data); }).catch(() => {});
+  }, []);
+
+  // Poll every 8s for delivery status
   useEffect(() => {
     const t = setInterval(loadData, 8000);
     return () => clearInterval(t);
-  }, [user?.customerId]);
+  }, []);
 
   async function changeQty(subId: string, delta: number) {
     const sub = subs.find(s => s.id === subId);
     if (!sub) return;
-    const newQty = Math.max(1, Math.min(9, sub.quantity + delta));
-    if (newQty === sub.quantity) return;
+    const step = stepFor(sub.product?.unit ?? "");
+    const newQty = Math.round((sub.quantity + delta * step) * 10) / 10;
+    const clamped = Math.max(step, Math.min(20, newQty));
+    if (clamped === sub.quantity) return;
 
-    const res = await fetch(`${BASE}/subscriptions/${subId}`, {
-      method: "PATCH", headers: authH(), body: JSON.stringify({ quantity: newQty }),
-    }).then(r => r.json());
-    if (res.data) setSubs(prev => prev.map(s => s.id === subId ? res.data : s));
+    // Optimistic UI update
+    setSubs(prev => prev.map(s => s.id === subId ? { ...s, quantity: clamped } : s));
 
-    // Regenerate order with new quantity
+    await fetch(`${BASE}/subscriptions/${subId}`, {
+      method: "PATCH", headers: authH(), body: JSON.stringify({ quantity: clamped }),
+    });
+
     setGenerating(true);
-    const cid = user?.customerId;
-    const body = cid ? JSON.stringify({ customerId: cid }) : "{}";
-    const oRes = await fetch(`${BASE}/orders/generate-for-customer`, {
-      method: "POST", headers: authH(), body,
-    }).then(r => r.json()).catch(() => null);
-    if (oRes?.data) setOrder(oRes.data);
+    await loadData();
     setGenerating(false);
   }
 
+  async function pauseAll() {
+    const allPaused = subs.every(s => s.status === "paused");
+    await fetch(`${BASE}/customers/me/pause-all`, {
+      method: "PATCH", headers: authH(), body: JSON.stringify({ pause: !allPaused }),
+    });
+    showToast(allPaused ? "Subscriptions resumed" : "All subscriptions paused");
+    loadData();
+  }
+
+  async function saveVacation() {
+    if (!vacFrom || !vacUntil) return;
+    setVacSaving(true);
+    await fetch(`${BASE}/customers/me/vacation`, {
+      method: "PATCH", headers: authH(), body: JSON.stringify({ from: vacFrom, until: vacUntil }),
+    });
+    setVacSaving(false);
+    setVacModal(false);
+    showToast("Vacation mode set");
+    loadData();
+  }
+
   const wallet = customer?.walletBalance ?? 0;
+  const allPaused = subs.length > 0 && subs.every(s => s.status === "paused");
+
+  const monthly = subs
+    .filter(s => s.status === "active")
+    .reduce((sum, s) => {
+      const mult = s.frequency === "daily" ? 30 : s.frequency === "alternate" ? 15 : s.frequency === "weekly" ? 4 : 1;
+      return sum + s.quantity * (s.product?.pricePerUnit ?? 0) * mult;
+    }, 0);
+
   const STATUS: Record<string, { label: string; color: string }> = {
-    pending:          { label: "⏳ Scheduled",    color: "var(--blue-ink)"  },
+    pending:          { label: "⏳ Scheduled",     color: "var(--blue-ink)"  },
     assigned:         { label: "✅ Agent assigned", color: "var(--green-ink)" },
-    out_for_delivery: { label: "🚚 On the way",    color: "var(--green-ink)" },
-    delivered:        { label: "✓ Delivered",      color: "var(--green-ink)" },
-    failed:           { label: "✗ Failed",         color: "var(--red-ink)"   },
+    out_for_delivery: { label: "🚚 On the way",     color: "var(--green-ink)" },
+    delivered:        { label: "✓ Delivered",       color: "var(--green-ink)" },
+    failed:           { label: "✗ Failed",          color: "var(--red-ink)"   },
   };
   const ds = STATUS[order?.status ?? "pending"] ?? STATUS.pending;
   const heroBg = order?.status === "delivered" ? "var(--green)" : "var(--blue)";
@@ -85,7 +144,41 @@ export default function CustomerHome({ user }: { user: any }) {
   return (
     <div style={{ padding: 16, paddingBottom: 24 }}>
 
-      {/* Top */}
+      {/* Toast */}
+      {toast && (
+        <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", background: "var(--green)", color: "#fff", borderRadius: 20, padding: "10px 20px", fontSize: 13, fontWeight: 600, zIndex: 200, whiteSpace: "nowrap" }}>
+          ✓ {toast}
+        </div>
+      )}
+
+      {/* Vacation modal */}
+      {vacModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 300, display: "flex", alignItems: "flex-end" }}>
+          <div style={{ background: "var(--surface)", borderRadius: "20px 20px 0 0", padding: 24, width: "100%", boxSizing: "border-box" }}>
+            <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 16 }}>🏖 Set vacation dates</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+              <label style={{ fontSize: 13, color: "var(--muted)" }}>From
+                <input type="date" value={vacFrom} onChange={e => setVacFrom(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border-2)", fontSize: 14, background: "var(--surface)", color: "var(--ink)", boxSizing: "border-box" }} />
+              </label>
+              <label style={{ fontSize: 13, color: "var(--muted)" }}>Until
+                <input type="date" value={vacUntil} onChange={e => setVacUntil(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border-2)", fontSize: 14, background: "var(--surface)", color: "var(--ink)", boxSizing: "border-box" }} />
+              </label>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setVacModal(false)}
+                style={{ flex: 1, height: 44, borderRadius: 12, border: "1px solid var(--border-2)", background: "var(--surface)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+              <button onClick={saveVacation} disabled={vacSaving || !vacFrom || !vacUntil}
+                style={{ flex: 2, height: 44, borderRadius: 12, border: "none", background: "var(--blue)", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: (!vacFrom || !vacUntil) ? 0.5 : 1 }}>
+                {vacSaving ? "Saving…" : "Set vacation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Top bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 12, color: "var(--muted)" }}>Good morning</div>
@@ -120,14 +213,30 @@ export default function CustomerHome({ user }: { user: any }) {
               <div style={{ fontSize: 12, opacity: 0.85 }}>
                 {order.deliveryAgent
                   ? `Agent: ${order.deliveryAgent.user?.name ?? "assigned"}`
-                  : "Arriving 5:30–9:00 AM"}
+                  : "Arriving 5:30–9:00 AM"} · ₹{order.totalAmount}
               </div>
             </div>
           </div>
         ) : (
-          <div style={{ fontSize: 13, opacity: 0.85 }}>No active subscriptions — add one below.</div>
+          <div style={{ fontSize: 13, opacity: 0.85 }}>No deliveries scheduled for today.</div>
         )}
       </div>
+
+      {/* Tomorrow's delivery */}
+      {tomorrow.length > 0 && (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 15, marginBottom: 13 }}>
+          <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 10, color: "var(--muted)" }}>Tomorrow's delivery</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {tomorrow.map((s: any) => (
+              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--surface-2)", borderRadius: 20, padding: "5px 12px", fontSize: 13 }}>
+                <span>{EMOJI[s.product?.category] ?? "📦"}</span>
+                <span style={{ fontWeight: 600 }}>{s.product?.name}</span>
+                <span style={{ color: "var(--muted)" }}>×{s.quantity}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Subscriptions */}
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 15, marginBottom: 13 }}>
@@ -141,17 +250,17 @@ export default function CustomerHome({ user }: { user: any }) {
           <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 10 }}>No active subscriptions yet.</p>
         )}
 
-        {subs.map((sub: any, i: number) => (
+        {subs.filter(s => s.status !== "cancelled").map((sub: any, i: number, arr: any[]) => (
           <div key={sub.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "10px 0", borderBottom: i < subs.length - 1 ? "1px solid var(--border)" : "none" }}>
+            padding: "10px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none",
+            opacity: sub.status === "paused" || sub.status === "vacation" ? 0.55 : 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 20 }}>
-                {sub.product?.category === "milk" ? "🥛" : sub.product?.category === "curd" ? "🥣" : sub.product?.category === "ghee" ? "🫙" : sub.product?.category === "paneer" ? "🧀" : "📦"}
-              </span>
+              <span style={{ fontSize: 20 }}>{EMOJI[sub.product?.category] ?? "📦"}</span>
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 600 }}>{sub.product?.name}</div>
                 <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
-                  {sub.frequency === "daily" ? "Daily" : sub.frequency} · ₹{sub.product?.pricePerUnit}/{sub.product?.unit}
+                  {FREQ_LABEL[sub.frequency] ?? sub.frequency} · ₹{sub.product?.pricePerUnit}/{sub.product?.unit}
+                  {sub.status !== "active" && <span style={{ marginLeft: 6, color: "var(--amber-ink)", fontWeight: 700 }}>({sub.status})</span>}
                 </div>
               </div>
             </div>
@@ -159,7 +268,7 @@ export default function CustomerHome({ user }: { user: any }) {
               <button onClick={() => changeQty(sub.id, -1)}
                 style={{ width: 30, height: 30, borderRadius: 9, border: "1px solid var(--border-2)", background: "var(--surface)", fontSize: 17, cursor: "pointer" }}>−</button>
               <span style={{ fontSize: 15, fontWeight: 700, minWidth: 46, textAlign: "center" }}>
-                {sub.quantity} {sub.product?.unit}
+                {fmtQty(sub.quantity, sub.product?.unit ?? "")}
               </span>
               <button onClick={() => changeQty(sub.id, 1)}
                 style={{ width: 30, height: 30, borderRadius: 9, border: "1px solid var(--border-2)", background: "var(--surface)", fontSize: 17, cursor: "pointer" }}>+</button>
@@ -169,31 +278,61 @@ export default function CustomerHome({ user }: { user: any }) {
 
         {generating && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>⏳ Updating today's order…</div>}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          {["⏸ Pause", "🏖 Vacation"].map(l => (
-            <button key={l} style={{ flex: 1, border: "1px solid var(--border-2)", borderRadius: 11, height: 40, background: "var(--surface)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{l}</button>
-          ))}
-        </div>
+        {subs.length > 0 && (
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button onClick={pauseAll}
+              style={{ flex: 1, border: "1px solid var(--border-2)", borderRadius: 11, height: 40, background: allPaused ? "var(--amber-soft)" : "var(--surface)", color: allPaused ? "var(--amber-ink)" : "var(--ink)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              {allPaused ? "▶ Resume" : "⏸ Pause"}
+            </button>
+            <button onClick={() => setVacModal(true)}
+              style={{ flex: 1, border: "1px solid var(--border-2)", borderRadius: 11, height: 40, background: "var(--surface)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              🏖 Vacation
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Monthly summary */}
+      {monthly > 0 && (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 15, marginBottom: 13 }}>
+          <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 10 }}>Monthly summary</div>
+          {subs.filter(s => s.status === "active").map((s: any) => {
+            const mult = s.frequency === "daily" ? 30 : s.frequency === "alternate" ? 15 : s.frequency === "weekly" ? 4 : 1;
+            return (
+              <div key={s.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, paddingBottom: 6, marginBottom: 6, borderBottom: "1px solid var(--border)" }}>
+                <span style={{ color: "var(--muted)" }}>{s.product?.name} ({FREQ_LABEL[s.frequency]})</span>
+                <span style={{ fontFamily: "monospace", fontWeight: 600 }}>₹{(s.quantity * s.product?.pricePerUnit * mult).toLocaleString("en-IN")}</span>
+              </div>
+            );
+          })}
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 14 }}>
+            <span>Est. monthly total</span>
+            <span style={{ fontFamily: "monospace", color: "var(--blue-ink)" }}>₹{monthly.toLocaleString("en-IN")}</span>
+          </div>
+        </div>
+      )}
+
       {/* Quick add */}
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 15 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-          <span style={{ fontWeight: 600, fontSize: 14 }}>Add to today</span>
-          <span style={{ fontSize: 12, color: "var(--blue)", fontWeight: 600, cursor: "pointer" }}
-            onClick={() => nav("/customer-app/store")}>Store →</span>
+      {storeProducts.length > 0 && (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 15 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Add to today</span>
+            <span style={{ fontSize: 12, color: "var(--blue)", fontWeight: 600, cursor: "pointer" }}
+              onClick={() => nav("/customer-app/store")}>Store →</span>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {storeProducts.map((p: any) => (
+              <div key={p.id} onClick={() => nav("/customer-app/store")}
+                style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 14, padding: "12px 8px",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer" }}>
+                <span style={{ fontSize: 26 }}>{EMOJI[p.category] ?? "📦"}</span>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</span>
+                <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "monospace" }}>₹{p.pricePerUnit}/{p.unit}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          {[{ icon: "🥣", name: "Curd", price: "₹40" }, { icon: "🫙", name: "Ghee", price: "₹320" }, { icon: "🧀", name: "Paneer", price: "₹80" }].map(p => (
-            <div key={p.name} style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 14, padding: "12px 8px",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer" }}>
-              <span style={{ fontSize: 26 }}>{p.icon}</span>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</span>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.price}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 }

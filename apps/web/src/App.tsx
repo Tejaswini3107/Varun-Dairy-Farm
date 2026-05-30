@@ -7,6 +7,8 @@ import AppShell from "./components/layout/AppShell";
 import AdminLogin from "./pages/AdminLogin";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
+import CustomerProfile from "./pages/CustomerProfile";
+import Products from "./pages/Products";
 import Inventory from "./pages/Inventory";
 import Orders from "./pages/Orders";
 import Delivery from "./pages/Delivery";
@@ -42,6 +44,8 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />
             <Route path="customers" element={<Customers />} />
+            <Route path="customers/:id" element={<CustomerProfile />} />
+            <Route path="products" element={<Products />} />
             <Route path="inventory" element={<Inventory />} />
             <Route path="orders" element={<Orders />} />
             <Route path="delivery" element={<Delivery />} />

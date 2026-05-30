@@ -5,6 +5,7 @@ const nav = [
   { to: "/", icon: "ti-layout-dashboard", label: "Dashboard" },
   { label: "Operations", type: "section" as const },
   { to: "/customers", icon: "ti-users", label: "Customers" },
+  { to: "/products", icon: "ti-package", label: "Products" },
   { to: "/inventory", icon: "ti-building-warehouse", label: "Inventory" },
   { to: "/orders", icon: "ti-clipboard-list", label: "Orders" },
   { to: "/delivery", icon: "ti-route", label: "Delivery" },

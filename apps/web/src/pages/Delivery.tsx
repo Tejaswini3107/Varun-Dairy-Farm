@@ -1,20 +1,37 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { fmt } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { LiveBadge } from "@/components/ui/LiveBadge";
-import { Modal, Field, selectStyle } from "@/components/ui/Modal";
+import { Modal, Field, inputStyle, selectStyle } from "@/components/ui/Modal";
+
+type Route = {
+  id: string; name: string; area: string;
+  agentId: string | null; agentName: string | null; agentPhone: string | null;
+  customerCount: number; totalStops: number; completedStops: number;
+  todayCollection: number; status: string;
+};
+
+const BLANK_ROUTE = { name: "", area: "", agentId: "" };
 
 export default function Delivery() {
-  const [assignRoute, setAssignRoute] = useState<{ routeId: string; routeName: string } | null>(null);
-  const [staffId, setStaffId] = useState("");
   const qc = useQueryClient();
+
+  // Modal states
+  const [showAdd, setShowAdd] = useState(false);
+  const [editRoute, setEditRoute] = useState<Route | null>(null);
+  const [assignModal, setAssignModal] = useState<Route | null>(null);
+  const [form, setForm] = useState({ ...BLANK_ROUTE });
+  const [editForm, setEditForm] = useState({ name: "", area: "" });
+  const [assignAgentId, setAssignAgentId] = useState("");
+  const [err, setErr] = useState("");
 
   const { data: routesRes } = useQuery({
     queryKey: ["delivery-routes"],
-    queryFn: () => api.get<{ data: any[] }>("/delivery/routes"),
+    queryFn: () => api.get<{ data: Route[] }>("/delivery/routes"),
     refetchInterval: 5000,
   });
 
@@ -23,16 +40,64 @@ export default function Delivery() {
     queryFn: () => api.get<{ data: any[] }>("/staff"),
   });
 
+  const createRoute = useMutation({
+    mutationFn: (body: any) => api.post("/delivery/routes", body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["delivery-routes"] }); setShowAdd(false); setForm({ ...BLANK_ROUTE }); setErr(""); },
+    onError: (e: Error) => setErr(e.message),
+  });
+
+  const updateRoute = useMutation({
+    mutationFn: ({ id, ...body }: any) => api.patch(`/delivery/routes/${id}`, body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["delivery-routes"] }); setEditRoute(null); setErr(""); },
+    onError: (e: Error) => setErr(e.message),
+  });
+
+  const deleteRoute = useMutation({
+    mutationFn: (id: string) => api.del(`/delivery/routes/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["delivery-routes"] }),
+    onError: (e: Error) => alert(e.message),
+  });
+
   const assignAgent = useMutation({
-    mutationFn: ({ sid, routeId }: { sid: string; routeId: string }) =>
-      api.patch(`/staff/${sid}/assign-route`, { routeId }),
-    onSuccess: () => { qc.invalidateQueries(); setAssignRoute(null); setStaffId(""); },
+    mutationFn: ({ routeId, agentId }: { routeId: string; agentId: string }) =>
+      api.patch(`/delivery/routes/${routeId}/assign-agent`, { agentId }),
+    onSuccess: () => { qc.invalidateQueries(); setAssignModal(null); setAssignAgentId(""); setErr(""); },
+    onError: (e: Error) => setErr(e.message),
+  });
+
+  const removeAgent = useMutation({
+    mutationFn: (routeId: string) => api.patch(`/delivery/routes/${routeId}`, { agentId: null }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["delivery-routes"] }),
+    onError: (e: Error) => alert(e.message),
+  });
+
+  const autoAssign = useMutation({
+    mutationFn: () => api.post<{ message: string }>("/delivery/routes/auto-assign", {}),
+    onSuccess: (d) => { alert(d.message); qc.invalidateQueries(); },
     onError: (e: Error) => alert(e.message),
   });
 
   const routes = routesRes?.data ?? [];
   const staff = staffRes?.data ?? [];
-  const active = routes.filter(r => r.status === "in_progress").length;
+  const agentsOnRoad = routes.filter(r => r.status === "in_progress").length;
+  const totalCustomers = routes.reduce((s, r) => s + r.customerCount, 0);
+  const routesWithAgent = routes.filter(r => r.agentId).length;
+
+  function handleAdd() {
+    if (!form.name || !form.area) { setErr("Route name and area are required"); return; }
+    createRoute.mutate({ name: form.name, area: form.area, agentId: form.agentId || undefined });
+  }
+
+  function openEdit(r: Route) {
+    setEditRoute(r);
+    setEditForm({ name: r.name, area: r.area });
+    setErr("");
+  }
+
+  function handleEdit() {
+    if (!editForm.name || !editForm.area) { setErr("Name and area required"); return; }
+    updateRoute.mutate({ id: editRoute!.id, ...editForm });
+  }
 
   const statusBadge = (s: string) => {
     if (s === "completed") return <Badge variant="green"><i className="ti ti-check text-[10px]" /> Done</Badge>;
@@ -42,65 +107,217 @@ export default function Delivery() {
 
   return (
     <div className="animate-fade">
+      {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4 mb-5">
         <div>
-          <h2 className="text-[21px] font-semibold">Delivery operations</h2>
-          <p className="text-[13px] text-[var(--muted)] mt-0.5">Live route tracking · dispatch &amp; status</p>
+          <h2 className="text-[21px] font-semibold">Delivery routes</h2>
+          <p className="text-[13px] text-[var(--muted)] mt-0.5">
+            {routes.length} routes · {totalCustomers} customers · {routesWithAgent}/{routes.length} agents assigned
+          </p>
         </div>
-        <LiveBadge label={`${active} agents on road`} />
+        <div className="flex items-center gap-2.5">
+          <LiveBadge label={`${agentsOnRoad} on road`} />
+          <Button onClick={() => autoAssign.mutate()} disabled={autoAssign.isPending}
+            title="Assign each route's default agent to today's pending orders">
+            <i className="ti ti-bolt" /> {autoAssign.isPending ? "Assigning…" : "Auto-assign today"}
+          </Button>
+          <Button variant="primary" onClick={() => { setShowAdd(true); setForm({ ...BLANK_ROUTE }); setErr(""); }}>
+            <i className="ti ti-plus" /> Add route
+          </Button>
+        </div>
       </div>
 
-      <Card pad>
-        {routes.length === 0 && (
-          <p className="text-[13px] text-[var(--muted)] py-4 text-center">No routes yet. Generate today's orders first.</p>
-        )}
-        {routes.map(route => {
-          const pct = route.totalStops > 0 ? Math.round((route.completedStops / route.totalStops) * 100) : 0;
-          return (
-            <div key={route.id} className="flex items-center gap-3.5 py-3.5 border-b border-[var(--border)] last:border-0">
-              <div className={`w-10 h-10 rounded-[11px] flex items-center justify-center text-[19px] flex-none ${route.status === "completed" ? "bg-[var(--surface-2)] text-[var(--muted)]" : "bg-[var(--blue-soft)] text-[var(--blue-ink)]"}`}>
-                <i className="ti ti-user" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-semibold">
-                  {route.agentName ? `${route.agentName} · ` : ""}{route.name}
-                </div>
-                <div className="text-[12px] text-[var(--muted)]">{route.area} · {route.completedStops}/{route.totalStops} stops</div>
-              </div>
-              <div className="flex items-center gap-2.5 min-w-[140px]">
-                <div className="flex-1 h-1.5 rounded-full bg-[var(--surface-2)] overflow-hidden">
-                  <div className="h-full rounded-full bg-[var(--green)] transition-all" style={{ width: `${pct}%` }} />
-                </div>
-                <span className="text-[13px] font-semibold font-mono w-10 text-right">{pct}%</span>
-              </div>
-              <div className="ml-2">{statusBadge(route.status)}</div>
-              {!route.agentId && (
-                <Button onClick={() => { setAssignRoute({ routeId: route.id, routeName: route.name }); setStaffId(""); }}>
-                  <i className="ti ti-user-plus text-xs" /> Assign
-                </Button>
-              )}
+      {/* Summary strip */}
+      <div className="grid grid-cols-4 gap-4 mb-5">
+        {[
+          { label: "Total routes", value: routes.length, icon: "ti-route" },
+          { label: "Customers covered", value: totalCustomers, icon: "ti-users" },
+          { label: "Agents assigned", value: `${routesWithAgent}/${routes.length}`, icon: "ti-user-check" },
+          { label: "Agents on road", value: agentsOnRoad, icon: "ti-truck-delivery" },
+        ].map(k => (
+          <Card key={k.label} className="p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-[10px] bg-[var(--blue-soft)] text-[var(--blue-ink)] grid place-items-center flex-none">
+              <i className={`ti ${k.icon} text-[17px]`} />
             </div>
-          );
-        })}
-      </Card>
+            <div>
+              <div className="text-[20px] font-bold leading-none">{k.value}</div>
+              <div className="text-[11.5px] text-[var(--muted)] mt-0.5">{k.label}</div>
+            </div>
+          </Card>
+        ))}
+      </div>
 
-      {assignRoute && (
-        <Modal title={`Assign agent to ${assignRoute.routeName}`} onClose={() => setAssignRoute(null)} width={380}>
+      {/* Routes list */}
+      {routes.length === 0 ? (
+        <Card pad>
+          <div className="text-center py-10 text-[var(--muted)]">
+            <div className="text-4xl mb-3">🗺️</div>
+            <div className="font-semibold mb-1">No routes yet</div>
+            <div className="text-[13px]">Click <b>Add route</b> to create your first delivery area.</div>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-2 gap-4">
+          {routes.map(route => {
+            const pct = route.totalStops > 0 ? Math.round((route.completedStops / route.totalStops) * 100) : 0;
+            return (
+              <Card key={route.id} className="p-4">
+                {/* Top row */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="font-semibold text-[15px]">{route.name}</div>
+                    <div className="text-[12.5px] text-[var(--muted)] mt-0.5">
+                      <i className="ti ti-map-pin text-xs mr-1" />{route.area}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {statusBadge(route.status)}
+                    <button onClick={() => openEdit(route)}
+                      className="w-7 h-7 rounded-[7px] border border-[var(--border)] bg-transparent text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] grid place-items-center cursor-pointer">
+                      <i className="ti ti-edit text-xs" />
+                    </button>
+                    <button onClick={() => { if (confirm(`Delete route "${route.name}"?`)) deleteRoute.mutate(route.id); }}
+                      className="w-7 h-7 rounded-[7px] border border-[var(--border)] bg-transparent text-[var(--muted)] hover:text-[var(--red-ink)] hover:border-[var(--red)] hover:bg-[var(--red-soft)] grid place-items-center cursor-pointer">
+                      <i className="ti ti-trash text-xs" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stats row */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="bg-[var(--surface-2)] rounded-[8px] p-2 text-center">
+                    <div className="font-semibold text-[15px]">{route.customerCount}</div>
+                    <div className="text-[10.5px] text-[var(--muted)]">customers</div>
+                  </div>
+                  <div className="bg-[var(--surface-2)] rounded-[8px] p-2 text-center">
+                    <div className="font-semibold text-[15px]">{route.completedStops}/{route.totalStops}</div>
+                    <div className="text-[10.5px] text-[var(--muted)]">today's stops</div>
+                  </div>
+                  <div className="bg-[var(--surface-2)] rounded-[8px] p-2 text-center">
+                    <div className="font-semibold text-[15px] font-mono">{fmt(route.todayCollection)}</div>
+                    <div className="text-[10.5px] text-[var(--muted)]">collected</div>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                {route.totalStops > 0 && (
+                  <div className="mb-3">
+                    <div className="flex justify-between text-[11.5px] text-[var(--muted)] mb-1">
+                      <span>Delivery progress</span><span className="font-semibold">{pct}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-[var(--surface-2)] overflow-hidden">
+                      <div className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, background: pct === 100 ? "var(--green)" : "var(--blue)" }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Agent row */}
+                {route.agentId ? (
+                  <div className="flex items-center justify-between bg-[var(--green-soft)] rounded-[10px] px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-[var(--green)] text-white grid place-items-center text-[11px] font-bold flex-none">
+                        {route.agentName?.charAt(0) ?? "?"}
+                      </div>
+                      <div>
+                        <div className="text-[13px] font-semibold text-[var(--green-ink)]">{route.agentName}</div>
+                        <div className="text-[10.5px] text-[var(--green-ink)] opacity-70">{route.agentPhone}</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => { setAssignModal(route); setAssignAgentId(route.agentId ?? ""); setErr(""); }}
+                        className="text-[11.5px] font-semibold text-[var(--green-ink)] bg-[var(--green-soft)] border border-[var(--green)] rounded-[7px] px-2 py-1 cursor-pointer hover:bg-[var(--green)] hover:text-white transition-colors">
+                        Change
+                      </button>
+                      <button onClick={() => removeAgent.mutate(route.id)}
+                        className="text-[11.5px] font-semibold text-[var(--muted)] border border-[var(--border)] rounded-[7px] px-2 py-1 cursor-pointer hover:text-[var(--red-ink)] hover:border-[var(--red)] transition-colors bg-transparent">
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => { setAssignModal(route); setAssignAgentId(""); setErr(""); }}
+                    className="w-full border border-dashed border-[var(--border-2)] rounded-[10px] py-2.5 text-[13px] font-semibold text-[var(--muted)] hover:border-[var(--blue)] hover:text-[var(--blue-ink)] hover:bg-[var(--blue-soft)] transition-colors cursor-pointer bg-transparent">
+                    <i className="ti ti-user-plus mr-1" /> Assign default agent
+                  </button>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add route modal */}
+      {showAdd && (
+        <Modal title="Add delivery route" onClose={() => { setShowAdd(false); setErr(""); }}>
+          <Field label="Route name">
+            <input style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. Route A · Morning" autoFocus />
+          </Field>
+          <Field label="Area covered">
+            <input style={inputStyle} value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
+              placeholder="e.g. Kondapur, Madhapur" />
+          </Field>
+          <Field label="Default delivery agent (optional)">
+            <select style={selectStyle} value={form.agentId} onChange={e => setForm(f => ({ ...f, agentId: e.target.value }))}>
+              <option value="">No default agent</option>
+              {staff.filter((s: any) => s.role !== "manager").map((s: any) => (
+                <option key={s.id} value={s.id}>{s.name} {s.routeName ? `· ${s.routeName}` : ""}</option>
+              ))}
+            </select>
+          </Field>
+          <p className="text-[12px] text-[var(--muted)] mb-3 mt-1">
+            The default agent is auto-assigned to today's orders when you click <b>Auto-assign today</b>.
+          </p>
+          {err && <p className="text-[var(--red)] text-[13px] mb-2">{err}</p>}
+          <div className="flex gap-2.5 mt-1">
+            <Button className="flex-1" onClick={() => { setShowAdd(false); setErr(""); }}>Cancel</Button>
+            <Button variant="primary" className="flex-1" onClick={handleAdd} disabled={createRoute.isPending}>
+              {createRoute.isPending ? "Creating…" : "Create route"}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit route modal */}
+      {editRoute && (
+        <Modal title={`Edit — ${editRoute.name}`} onClose={() => { setEditRoute(null); setErr(""); }}>
+          <Field label="Route name">
+            <input style={inputStyle} value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+          </Field>
+          <Field label="Area covered">
+            <input style={inputStyle} value={editForm.area} onChange={e => setEditForm(f => ({ ...f, area: e.target.value }))} />
+          </Field>
+          {err && <p className="text-[var(--red)] text-[13px] mb-2">{err}</p>}
+          <div className="flex gap-2.5 mt-2">
+            <Button className="flex-1" onClick={() => { setEditRoute(null); setErr(""); }}>Cancel</Button>
+            <Button variant="primary" className="flex-1" onClick={handleEdit} disabled={updateRoute.isPending}>
+              {updateRoute.isPending ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Assign agent modal */}
+      {assignModal && (
+        <Modal title={`Assign agent — ${assignModal.name}`} onClose={() => { setAssignModal(null); setErr(""); }} width={380}>
           <Field label="Select delivery agent">
-            <select style={selectStyle} value={staffId} onChange={e => setStaffId(e.target.value)}>
+            <select style={selectStyle} value={assignAgentId} onChange={e => setAssignAgentId(e.target.value)}>
               <option value="">Choose agent…</option>
-              {staff.map((s: any) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+              {staff.filter((s: any) => s.role !== "manager").map((s: any) => (
+                <option key={s.id} value={s.id}>{s.name}{s.routeName ? ` · ${s.routeName}` : ""}</option>
               ))}
             </select>
           </Field>
           <p className="text-[12px] text-[var(--muted)] mb-3">
-            This will assign all pending orders on {assignRoute.routeName} to the selected agent and set them to "Out for delivery".
+            This sets the <b>default agent</b> for this route and assigns all today's pending orders to them immediately.
           </p>
+          {err && <p className="text-[var(--red)] text-[13px] mb-2">{err}</p>}
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={() => setAssignRoute(null)}>Cancel</Button>
-            <Button variant="primary" className="flex-1" disabled={!staffId || assignAgent.isPending}
-              onClick={() => assignAgent.mutate({ sid: staffId, routeId: assignRoute.routeId })}>
+            <Button className="flex-1" onClick={() => { setAssignModal(null); setErr(""); }}>Cancel</Button>
+            <Button variant="primary" className="flex-1"
+              disabled={!assignAgentId || assignAgent.isPending}
+              onClick={() => assignAgent.mutate({ routeId: assignModal.id, agentId: assignAgentId })}>
               {assignAgent.isPending ? "Assigning…" : "Assign & dispatch"}
             </Button>
           </div>

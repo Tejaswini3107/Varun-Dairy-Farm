@@ -29,6 +29,12 @@ export default function Dashboard() {
     refetchInterval: 30000,
   });
 
+  const { data: forecastRes } = useQuery({
+    queryKey: ["demand-forecast"],
+    queryFn: () => api.get<{ data: { productId: string; name: string; category: string; unit: string; required: number; available: number; gap: number; status: string }[]; date: string }>("/dashboard/forecast"),
+    refetchInterval: 60000,
+  });
+
   const generateOrders = useMutation({
     mutationFn: () => api.post<{ message: string; count: number }>("/orders/generate", {}),
     onSuccess: (d) => { alert(`✅ ${d.message}`); qc.invalidateQueries(); },
@@ -38,6 +44,8 @@ export default function Dashboard() {
   const kpis = kpisRes?.data;
   const feed = feedRes?.data ?? [];
   const revenue = revenueRes?.data ?? [];
+  const forecast = forecastRes?.data ?? [];
+  const forecastDate = forecastRes?.date ?? "";
 
   const dotColor: Record<string, string> = { green: "var(--green)", blue: "var(--blue)", amber: "var(--amber)" };
 
@@ -70,6 +78,22 @@ export default function Dashboard() {
         <KpiCard label="Active subs" value={String(kpis?.activeSubscriptions ?? "—")}
           delta={`${kpis?.renewalsDue ?? 0} renewals due`} deltaUp
           icon="ti-refresh" iconBg="bg-[var(--green-soft)] text-[var(--green-ink)]" />
+      </div>
+
+      <div className="grid grid-cols-4 gap-4 mb-4">
+        <KpiCard label="Total customers" value={String(kpis?.totalCustomers ?? "—")}
+          delta={`${kpis?.newThisMonth ?? 0} new this month`} deltaUp
+          icon="ti-users" iconBg="bg-[var(--blue-soft)] text-[var(--blue-ink)]" />
+        <KpiCard label="Delivery progress" value={`${kpis?.deliveryPercent ?? 0}%`}
+          delta={`${kpis?.deliveredCount ?? 0} done · ${kpis?.pendingDeliveries ?? 0} pending`}
+          deltaUp={(kpis?.deliveryPercent ?? 0) >= 80} icon="ti-truck-delivery"
+          iconBg="bg-[var(--amber-soft)] text-[var(--amber-ink)]" />
+        <KpiCard label="Pending collections" value={fmt(kpis?.pendingCollections ?? 0)}
+          delta="customers with dues" icon="ti-alert-triangle"
+          iconBg="bg-[var(--red-soft)] text-[var(--red-ink)]" />
+        <KpiCard label="Active routes" value={String(kpis?.totalRoutes ?? "—")}
+          delta={`${kpis?.activeSubscriptions ?? 0} subscriptions`} deltaUp
+          icon="ti-route" iconBg="bg-[var(--green-soft)] text-[var(--green-ink)]" />
       </div>
 
       <div className="grid grid-cols-[1.7fr_1fr] gap-4 mb-4">
@@ -109,6 +133,42 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
+
+      {forecast.length > 0 && (
+        <Card pad className="mb-4">
+          <CardHeader
+            title={`Tomorrow's demand forecast${forecastDate ? ` · ${new Date(forecastDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}`}
+          />
+          <div className="grid grid-cols-4 gap-3 mt-1">
+            {forecast.map((f) => {
+              const shortage = f.status === "shortage";
+              const pct = f.required > 0 ? Math.min(100, Math.round((f.available / f.required) * 100)) : 100;
+              return (
+                <div key={f.productId} className="rounded-xl p-3 border border-[var(--border)]"
+                  style={{ background: shortage ? "var(--red-soft)" : "var(--green-soft)" }}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[13px] font-semibold">{f.name}</span>
+                    <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full ${shortage ? "bg-[var(--red)] text-white" : "bg-[var(--green)] text-white"}`}>
+                      {shortage ? "Shortage" : "OK"}
+                    </span>
+                  </div>
+                  <div className="text-[12px] text-[var(--muted)] mb-2">
+                    Need <b>{f.required} {f.unit}</b> · Have {f.available} {f.unit}
+                  </div>
+                  <div className="h-1.5 rounded-full bg-[var(--surface-2)] overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: shortage ? "var(--red)" : "var(--green)" }} />
+                  </div>
+                  {shortage && (
+                    <div className="text-[11.5px] font-semibold mt-1.5" style={{ color: "var(--red-ink)" }}>
+                      Buy {f.gap} {f.unit} more
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       <Card pad>
         <CardHeader title="Live operations feed" action={<LiveBadge label="real-time" />} />

@@ -6,6 +6,7 @@ import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 
 import { authRouter } from "./routes/auth";
+import { productsRouter } from "./routes/products";
 import { customersRouter } from "./routes/customers";
 import { ordersRouter } from "./routes/orders";
 import { deliveryRouter } from "./routes/delivery";
@@ -50,6 +51,7 @@ app.use(
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/auth", authRouter);
+app.use("/products", productsRouter);
 app.use("/dashboard", dashboardRouter);
 app.use("/customers", customersRouter);
 app.use("/orders", ordersRouter);

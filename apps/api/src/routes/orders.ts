@@ -2,8 +2,9 @@ import { Router } from "express";
 import { z } from "zod";
 import { db } from "@varun/database";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { generateDailyOrders } from "../services/orderGeneration";
+import { generateDailyOrders, recalculateOrderForCustomer } from "../services/orderGeneration";
 import { sendPushNotification } from "../services/notifications";
+import { shouldDeliverOn, computeNextDeliveryDate } from "../services/subscriptionUtils";
 
 export const ordersRouter = Router();
 ordersRouter.use(requireAuth);
@@ -86,6 +87,16 @@ ordersRouter.post("/generate", requireRole("admin", "manager"), async (_req, res
   }
 });
 
+// POST /orders/recalculate-for-customer — delete today's pending order and rebuild from current subscriptions
+ordersRouter.post("/recalculate-for-customer", async (req: any, res, next) => {
+  try {
+    const customerId = req.body?.customerId ?? req.user?.customerId;
+    if (!customerId) { res.status(400).json({ error: "customerId required" }); return; }
+    const order = await recalculateOrderForCustomer(customerId);
+    res.json({ data: order });
+  } catch (err) { next(err); }
+});
+
 // POST /orders/generate-for-customer — generate today's order for a single customer
 ordersRouter.post("/generate-for-customer", async (req: any, res, next) => {
   try {
@@ -113,12 +124,19 @@ ordersRouter.post("/generate-for-customer", async (req: any, res, next) => {
       return;
     }
 
-    const subs = await db.subscription.findMany({
-      where: { customerId, status: "active" },
+    const allSubs = await db.subscription.findMany({
+      where: {
+        customerId,
+        status: "active",
+        OR: [{ pauseUntil: null }, { pauseUntil: { lt: today } }],
+      },
       include: { product: true, customer: true },
     });
 
-    if (!subs.length) { res.status(400).json({ error: "No active subscriptions" }); return; }
+    // Only include subscriptions that should deliver today per their frequency
+    const subs = allSubs.filter(s => shouldDeliverOn(s.frequency, s.createdAt, today));
+
+    if (!subs.length) { res.status(400).json({ error: "No active subscriptions scheduled for today" }); return; }
 
     const items = subs.map(s => ({
       productId: s.productId,
@@ -133,6 +151,11 @@ ordersRouter.post("/generate-for-customer", async (req: any, res, next) => {
       data: { customerId, routeId: subs[0].customer.routeId, totalAmount, otp, date: today, items: { create: items } },
       include: { items: { include: { product: true } }, customer: { include: { user: { select: { name: true } } } } },
     });
+
+    // Update nextDeliveryDate on each sub
+    await Promise.all(subs.map(s =>
+      db.subscription.update({ where: { id: s.id }, data: { nextDeliveryDate: computeNextDeliveryDate(s.frequency, today) } })
+    ));
 
     res.status(201).json({ data: order, created: true });
   } catch (err) {
@@ -180,22 +203,40 @@ ordersRouter.patch("/:id/status", async (req, res, next) => {
       },
     });
 
-    // Debit wallet if delivered and paid via wallet
-    if (data.status === "delivered" && data.paymentMethod === "wallet") {
-      await db.customer.update({
-        where: { id: order.customerId },
-        data: { walletBalance: { decrement: order.totalAmount } },
-      });
+    if (data.status === "delivered") {
+      const amount = data.collectedAmount ?? order.totalAmount;
+      const method = data.paymentMethod ?? "wallet";
+
+      if (method === "wallet") {
+        await db.customer.update({
+          where: { id: order.customerId },
+          data: { walletBalance: { decrement: order.totalAmount } },
+        });
+      }
+
       await db.transaction.create({
         data: {
           customerId: order.customerId,
           orderId: order.id,
-          type: "auto_debit",
-          method: "wallet",
-          amount: order.totalAmount,
+          type: method === "wallet" ? "auto_debit" : "debit",
+          method,
+          amount,
           status: "success",
         },
       });
+
+      // Advance nextDeliveryDate for subscriptions that were in this order
+      const orderItems = await db.orderItem.findMany({ where: { orderId: order.id }, select: { productId: true } });
+      const productIds = orderItems.map(i => i.productId);
+      const subs = await db.subscription.findMany({
+        where: { customerId: order.customerId, productId: { in: productIds }, status: "active" },
+      });
+      await Promise.all(subs.map(s =>
+        db.subscription.update({
+          where: { id: s.id },
+          data: { nextDeliveryDate: computeNextDeliveryDate(s.frequency, order.date) },
+        })
+      ));
     }
 
     // Push notification to customer

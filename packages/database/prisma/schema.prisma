@@ -52,12 +52,19 @@ model Customer {
   address         String
   landmark        String?
   area            String
+  city            String?
+  pincode         String?
+  lat             Float?
+  lng             Float?
+  alternateMobile String?
   routeId         String
   route           Route    @relation(fields: [routeId], references: [id])
+  stopSequence    Int?
   walletBalance   Float    @default(0)
   autoPay         Boolean  @default(false)
   autoPayLimit    Float    @default(2000)
   razorpayContact String?
+  notes           String?
   status          CustomerStatus @default(active)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -125,6 +132,9 @@ model Subscription {
   product          Product              @relation(fields: [productId], references: [id])
   quantity         Float
   frequency        SubscriptionFrequency @default(daily)
+  deliveryDays     String?              // JSON array of day numbers e.g. "[1,3,5]" = Mon,Wed,Fri. null = use frequency
+  startDate        DateTime?
+  endDate          DateTime?
   status           SubscriptionStatus    @default(active)
   pauseUntil       DateTime?
   vacationFrom     DateTime?
