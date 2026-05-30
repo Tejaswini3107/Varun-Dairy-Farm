@@ -40,14 +40,18 @@ app.use(
 app.use("/webhooks", express.raw({ type: "application/json" }), webhooksRouter);
 
 app.use(express.json({ limit: "10mb" }));
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 300,
-    standardHeaders: true,
-    legacyHeaders: false,
-  })
-);
+
+// Rate limiting — disabled in development (all localhost traffic shares one IP)
+if (process.env.NODE_ENV !== "development") {
+  app.use(
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 300,
+      standardHeaders: true,
+      legacyHeaders: false,
+    })
+  );
+}
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/auth", authRouter);
