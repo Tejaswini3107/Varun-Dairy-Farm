@@ -30,7 +30,7 @@ export default function CustomerStore() {
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2500); }
 
   async function subscribe(productId: string, productName: string) {
-    if (!user?.customerId) { showToast("Login required"); return; }
+    if (!user?.customerId) { showToast("Account not set up — contact admin"); return; }
     setSubscribing(productId);
     try {
       const res = await fetch(`${BASE}/subscriptions`, {

@@ -96,10 +96,11 @@ export default function CustomerLogin() {
         <div style={{ marginTop: 28, padding: 14, background: "var(--surface-2)", borderRadius: 12, fontSize: 12 }}>
           <p style={{ fontWeight: 600, marginBottom: 6, color: "var(--muted)" }}>TEST ACCOUNTS</p>
           {[
-            { name: "Meera Reddy", phone: "9800000012", area: "Kondapur · ₹676 wallet" },
-            { name: "Anjali Rao", phone: "9700000088", area: "Gachibowli · ₹1,120 wallet" },
-            { name: "Kavya Patel", phone: "9000000033", area: "Jubilee Hills · ₹540 wallet" },
-            { name: "Rahul Mehta", phone: "9600000051", area: "Madhapur · −₹120 dues" },
+            { name: "Meera Reddy",   phone: "9800000001", area: "Kondapur · ₹850 wallet" },
+            { name: "Kavya Patel",   phone: "9800000003", area: "Kondapur · ₹1,200 wallet" },
+            { name: "Anjali Rao",    phone: "9800000004", area: "Madhapur · ₹600 wallet" },
+            { name: "Priya Das",     phone: "9800000008", area: "Jubilee Hills · ₹3,200 wallet" },
+            { name: "Rahul Mehta",   phone: "9800000005", area: "Madhapur · −₹180 dues" },
           ].map(u => (
             <div key={u.phone} onClick={() => { setPhone(u.phone); setStep("phone"); }}
               style={{ padding: "6px 0", borderBottom: "1px solid var(--border)", cursor: "pointer", color: "var(--ink)" }}>
