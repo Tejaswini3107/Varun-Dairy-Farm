@@ -10,6 +10,7 @@ COPY apps/api/package.json ./apps/api/
 RUN pnpm install --frozen-lockfile
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
+RUN pnpm --filter @varun/database generate
 WORKDIR /app/apps/api
 RUN pnpm run build
 
@@ -21,4 +22,4 @@ COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 EXPOSE 4000
-CMD ["node", "apps/api/dist/index.js"]
+CMD ["sh", "-c", "node_modules/.bin/prisma db push --schema=packages/database/prisma/schema.prisma && node apps/api/dist/index.js"]
