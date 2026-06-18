@@ -28,6 +28,8 @@ Thumbs.db
 
 # Prisma
 packages/database/generated/
+packages/database/node_modules/
+packages/database/package-lock.json
 
 # Expo
 apps/mobile/.expo/
