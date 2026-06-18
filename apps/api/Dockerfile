@@ -14,7 +14,7 @@ RUN pnpm --filter @varun/database generate
 WORKDIR /app/apps/api
 RUN pnpm run build
 
-FROM base AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app/node_modules ./node_modules
@@ -22,4 +22,4 @@ COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 EXPOSE 4000
-CMD ["sh", "-c", "node_modules/.bin/prisma db push --schema=packages/database/prisma/schema.prisma && node apps/api/dist/index.js"]
+CMD ["node", "apps/api/dist/index.js"]
