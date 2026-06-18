@@ -236,6 +236,8 @@ export interface DashboardKPIs {
   deliveredCount: number;
   pendingDeliveries: number;
   deliveryPercent: number;
+  totalCustomers: number;
+  newThisMonth: number;
 }
 
 export interface RevenueDataPoint {
