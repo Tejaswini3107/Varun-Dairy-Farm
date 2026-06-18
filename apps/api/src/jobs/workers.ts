@@ -1,32 +1,48 @@
 import { Queue, Worker } from "bullmq";
 import { generateDailyOrders } from "../services/orderGeneration";
 
-const connection = {
-  host: process.env.REDIS_HOST ?? "localhost",
-  port: parseInt(process.env.REDIS_PORT ?? "6379"),
-};
+function getRedisConnection() {
+  if (process.env.REDIS_URL) {
+    return { url: process.env.REDIS_URL };
+  }
+  return {
+    host: process.env.REDIS_HOST ?? "localhost",
+    port: parseInt(process.env.REDIS_PORT ?? "6379"),
+  };
+}
 
-export const orderQueue = new Queue("orders", { connection });
-export const notificationQueue = new Queue("notifications", { connection });
+let orderQueue: Queue | null = null;
+let notificationQueue: Queue | null = null;
+
+export function getOrderQueue() {
+  return orderQueue;
+}
 
 export function startJobWorkers() {
-  // Order generation worker
-  new Worker(
-    "orders",
-    async (job) => {
-      if (job.name === "generate-daily-orders") {
-        await generateDailyOrders();
-      }
-    },
-    { connection }
-  );
+  try {
+    const connection = getRedisConnection();
 
-  // Schedule daily order generation at 4 AM IST (22:30 UTC)
-  orderQueue.upsertJobScheduler(
-    "daily-order-generation",
-    { pattern: "30 22 * * *" },
-    { name: "generate-daily-orders", data: {} }
-  );
+    orderQueue = new Queue("orders", { connection });
+    notificationQueue = new Queue("notifications", { connection });
 
-  console.log("⚙️  Job workers started");
+    new Worker(
+      "orders",
+      async (job) => {
+        if (job.name === "generate-daily-orders") {
+          await generateDailyOrders();
+        }
+      },
+      { connection }
+    );
+
+    orderQueue.upsertJobScheduler(
+      "daily-order-generation",
+      { pattern: "30 22 * * *" },
+      { name: "generate-daily-orders", data: {} }
+    );
+
+    console.log("⚙️  Job workers started");
+  } catch (err) {
+    console.error("⚠️  Redis unavailable — job workers not started:", err);
+  }
 }
