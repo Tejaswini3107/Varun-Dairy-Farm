@@ -38,7 +38,7 @@ function dateKey(d: Date): string {
 reportsRouter.get("/revenue", async (req, res, next) => {
   try {
     const days = parseInt((req.query.days as string) ?? "7");
-    const result = [];
+    const result: { date: string; label: string; revenue: number; orders: number }[] = [];
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date();
       date.setHours(0, 0, 0, 0);
@@ -259,7 +259,7 @@ reportsRouter.get("/demand/forecast", async (req, res, next) => {
       include: { product: true },
     });
 
-    const result = [];
+    const result: { date: string; label: string; isToday: boolean; products: { productId: string; name: string; unit: string; category: string; qty: number }[] }[] = [];
     for (let i = 0; i < days; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
