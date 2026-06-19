@@ -25,7 +25,7 @@ COPY .npmrc package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/database/package.json ./packages/database/
 COPY apps/api/package.json ./apps/api/
-RUN pnpm install --prod --no-frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 COPY packages/database/prisma ./packages/database/prisma
 RUN pnpm --filter @varun/database generate
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
