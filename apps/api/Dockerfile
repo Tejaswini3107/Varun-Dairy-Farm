@@ -15,16 +15,13 @@ RUN pnpm --filter @varun/database generate
 WORKDIR /app/apps/api
 RUN pnpm run build
 
-FROM base AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY .npmrc ./
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/database/package.json ./packages/database/
-COPY apps/api/package.json ./apps/api/
-RUN pnpm install --prod --no-frozen-lockfile
+# Copy flat node_modules (shamefully-hoist makes this work without broken symlinks)
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package.json ./apps/api/
 EXPOSE 4000
 CMD ["node", "apps/api/dist/apps/api/src/index.js"]
