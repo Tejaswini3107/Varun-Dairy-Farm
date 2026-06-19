@@ -18,6 +18,7 @@ RUN pnpm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apk add --no-cache openssl
 # Copy flat node_modules (shamefully-hoist makes this work without broken symlinks)
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
