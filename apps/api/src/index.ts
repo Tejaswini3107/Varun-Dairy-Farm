@@ -1,4 +1,14 @@
 import "dotenv/config";
+
+process.on("uncaughtException", (err) => {
+  console.error("FATAL uncaughtException:", err.message, "\n", err.stack);
+  process.exit(1);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("FATAL unhandledRejection:", reason);
+  process.exit(1);
+});
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
