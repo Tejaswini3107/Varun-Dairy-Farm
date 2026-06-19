@@ -25,7 +25,7 @@ export async function sendOtp(phone: string, code: string): Promise<void> {
         text: `Your Varun Dairy OTP is *${code}*. Valid for 10 minutes.`,
       }),
       "src.name": process.env.GUPSHUP_APP_NAME!,
-    }),
+    }) as any,
   });
 }
 
@@ -46,7 +46,7 @@ export async function sendWhatsApp(phone: string, message: string): Promise<void
       destination: `91${phone}`,
       message: JSON.stringify({ type: "text", text: message }),
       "src.name": process.env.GUPSHUP_APP_NAME!,
-    }),
+    }) as any,
   });
 }
 
