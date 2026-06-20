@@ -2,7 +2,7 @@ import { Router, type Router as ExpressRouter } from "express";
 import { z } from "zod";
 import { db } from "@varun/database";
 import { signToken } from "../middleware/auth";
-import { generateOtp, sendOtp } from "../services/notifications";
+import { generateOtp } from "../services/notifications";
 
 export const authRouter: ExpressRouter = Router();
 
@@ -31,9 +31,8 @@ authRouter.post("/send-otp", async (req, res, next) => {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await db.otpCode.create({ data: { userId: user.id, code, expiresAt } });
-    await sendOtp(phone, code);
 
-    res.json({ message: "OTP sent" });
+    res.json({ message: "OTP sent", code });
   } catch (err) {
     next(err);
   }
