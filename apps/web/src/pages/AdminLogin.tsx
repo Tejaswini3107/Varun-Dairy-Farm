@@ -19,13 +19,12 @@ export default function AdminLogin() {
     if (phone.length !== 10) { setError("Enter 10-digit number"); return; }
     setLoading(true); setError("");
     try {
-      await fetch(`${BASE}/auth/send-otp`, {
+      const res = await fetch(`${BASE}/auth/send-otp`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
-      const devRes = await fetch(`${BASE}/auth/dev-otp/${phone}`);
-      const d = await devRes.json();
-      setDevOtp(d.data?.code ?? null);
+      const d = await res.json();
+      setDevOtp(d.code ?? null);
       setStep("otp");
     } catch { setError("Failed to send OTP"); }
     finally { setLoading(false); }
