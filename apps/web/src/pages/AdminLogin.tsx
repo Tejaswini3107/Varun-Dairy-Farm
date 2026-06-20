@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+const BASE = (import.meta.env.VITE_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
 export default function AdminLogin() {
   // Clear any stale old key from before the portal split
