@@ -109,7 +109,7 @@ export default function Settings() {
           {(Object.keys(FIELD_LABELS) as (keyof typeof DEFAULT_DETAILS)[]).map((k) => (
             <Field key={k} label={FIELD_LABELS[k]}>
               <input style={inputStyle} value={draft[k]}
-                onChange={e => setDraft(d => ({ ...d, [k]: e.target.value }))} />
+                onChange={e => setDraft((d: typeof DEFAULT_DETAILS) => ({ ...d, [k]: e.target.value }))} />
             </Field>
           ))}
           <div className="flex gap-2 mt-2">
