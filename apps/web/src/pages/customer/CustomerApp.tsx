@@ -3,6 +3,7 @@ import { Routes, Route, NavLink, useNavigate, Navigate } from "react-router-dom"
 import CustomerHome from "./CustomerHome";
 import CustomerSubscription from "./CustomerSubscription";
 import CustomerStore from "./CustomerStore";
+import CustomerWallet from "./CustomerWallet";
 
 export default function CustomerApp() {
   const nav = useNavigate();
@@ -18,6 +19,7 @@ export default function CustomerApp() {
     { to: "/customer-app/home", icon: "ti-home", label: "Home" },
     { to: "/customer-app/subscription", icon: "ti-calendar-event", label: "Plan" },
     { to: "/customer-app/store", icon: "ti-building-store", label: "Store" },
+    { to: "/customer-app/wallet", icon: "ti-wallet", label: "Wallet" },
   ];
 
   return (
@@ -36,7 +38,7 @@ export default function CustomerApp() {
           <Route path="home" element={<CustomerHome user={user} />} />
           <Route path="subscription" element={<CustomerSubscription />} />
           <Route path="store" element={<CustomerStore />} />
-
+          <Route path="wallet" element={<CustomerWallet />} />
         </Routes>
       </div>
 
