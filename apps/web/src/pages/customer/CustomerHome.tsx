@@ -30,6 +30,7 @@ export default function CustomerHome({ user }: { user: any }) {
   const [vacUntil, setVacUntil] = useState("");
   const [vacSaving, setVacSaving] = useState(false);
   const [toast, setToast] = useState("");
+  const [skipping, setSkipping] = useState(false);
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(""), 2500); }
 
@@ -121,6 +122,17 @@ export default function CustomerHome({ user }: { user: any }) {
     loadData();
   }
 
+  async function skipToday() {
+    if (!order?.id) return;
+    setSkipping(true);
+    try {
+      await fetch(`${BASE}/orders/${order.id}/skip`, { method: "POST", headers: authH() });
+      showToast("Today's delivery skipped");
+      loadData();
+    } catch { showToast("Could not skip — try again"); }
+    finally { setSkipping(false); }
+  }
+
   const wallet = customer?.walletBalance ?? 0;
   const allPaused = subs.length > 0 && subs.every(s => s.status === "paused");
 
@@ -193,6 +205,32 @@ export default function CustomerHome({ user }: { user: any }) {
         </div>
       </div>
 
+      {/* Low balance warning */}
+      {!loading && wallet < 200 && wallet >= 0 && (
+        <div style={{ background: "var(--amber-soft)", border: "1px solid var(--amber)", borderRadius: 14, padding: "12px 14px", marginBottom: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--amber-ink)" }}>⚠ Low wallet balance</div>
+            <div style={{ fontSize: 12, color: "var(--amber-ink)", marginTop: 2, opacity: 0.85 }}>Add funds to avoid delivery pause</div>
+          </div>
+          <button onClick={() => nav("/customer-app/wallet")}
+            style={{ background: "var(--amber)", color: "#fff", border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            Recharge →
+          </button>
+        </div>
+      )}
+      {!loading && wallet < 0 && (
+        <div style={{ background: "var(--red-soft)", border: "1px solid var(--red)", borderRadius: 14, padding: "12px 14px", marginBottom: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--red-ink)" }}>🔴 Negative balance</div>
+            <div style={{ fontSize: 12, color: "var(--red-ink)", marginTop: 2, opacity: 0.85 }}>Deliveries on hold until recharged</div>
+          </div>
+          <button onClick={() => nav("/customer-app/wallet")}
+            style={{ background: "var(--red)", color: "#fff", border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            Recharge →
+          </button>
+        </div>
+      )}
+
       {/* Today's delivery hero */}
       <div style={{ background: heroBg, borderRadius: 18, padding: 16, marginBottom: 13, color: "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
@@ -219,6 +257,12 @@ export default function CustomerHome({ user }: { user: any }) {
           </div>
         ) : (
           <div style={{ fontSize: 13, opacity: 0.85 }}>No deliveries scheduled for today.</div>
+        )}
+        {order && !["delivered", "failed", "cancelled"].includes(order.status ?? "") && (
+          <button onClick={skipToday} disabled={skipping}
+            style={{ marginTop: 12, width: "100%", background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.35)", borderRadius: 11, padding: "9px 0", fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer", opacity: skipping ? 0.6 : 1 }}>
+            {skipping ? "Skipping…" : "⏭ Skip today's delivery"}
+          </button>
         )}
       </div>
 

@@ -66,6 +66,20 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Low inventory alert banner */}
+      {forecast.some(f => f.status === "critical" || f.gap < 0) && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-[var(--red)] bg-[var(--red-soft)] px-4 py-3">
+          <i className="ti ti-alert-triangle text-[var(--red-ink)] text-[18px]" />
+          <div className="flex-1">
+            <span className="font-semibold text-[13.5px] text-[var(--red-ink)]">Stock shortage · </span>
+            <span className="text-[13px] text-[var(--red-ink)]">
+              {forecast.filter(f => f.status === "critical" || f.gap < 0).map(f => `${f.name} (need ${Math.abs(f.gap)} ${f.unit} more)`).join(" · ")}
+            </span>
+          </div>
+          <a href="/inventory" className="text-[12px] font-semibold text-[var(--red-ink)] underline">View inventory →</a>
+        </div>
+      )}
+
       <div className="grid grid-cols-4 gap-4 mb-4">
         <KpiCard label="Today's orders" value={String(kpis?.todayOrders ?? "—")}
           delta={kpis ? `${kpis.ordersChange >= 0 ? "+" : ""}${kpis.ordersChange} vs yesterday` : ""}
