@@ -6,9 +6,9 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/web/package.json ./apps/web/
 RUN pnpm install --no-frozen-lockfile
+ARG CACHEBUST=1
 COPY packages/shared/ ./packages/shared/
 COPY apps/web/ ./apps/web/
-ARG CACHEBUST=1
 WORKDIR /app/apps/web
 ARG VITE_API_URL
 ARG VITE_SUPABASE_URL
