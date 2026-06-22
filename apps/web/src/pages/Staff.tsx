@@ -22,7 +22,15 @@ const statusBadge = (s: string) => {
   return <Badge variant="gray">Off duty</Badge>;
 };
 
+function fmtTime(dt: string) {
+  return new Date(dt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+}
+function fmtDate(dt: string) {
+  return new Date(dt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+}
+
 export default function Staff() {
+  const [tab, setTab] = useState<"team" | "attendance">("team");
   const [showAdd, setShowAdd] = useState(false);
   const [assignTarget, setAssignTarget] = useState<{ staffId: string; name: string } | null>(null);
   const [routeId, setRouteId] = useState("");
@@ -34,6 +42,13 @@ export default function Staff() {
     queryKey: ["staff"],
     queryFn: () => api.get<{ data: any[] }>("/staff"),
     refetchInterval: 5000,
+  });
+
+  const { data: attendanceRes, isLoading: attLoading } = useQuery({
+    queryKey: ["attendance"],
+    queryFn: () => api.get<{ data: any[] }>("/delivery/attendance"),
+    refetchInterval: 15000,
+    enabled: tab === "attendance",
   });
 
   const addStaff = useMutation({
@@ -50,6 +65,7 @@ export default function Staff() {
   });
 
   const staff = data?.data ?? [];
+  const attendance = attendanceRes?.data ?? [];
 
   return (
     <div className="animate-fade">
@@ -58,54 +74,130 @@ export default function Staff() {
           <h2 className="text-[21px] font-semibold">Staff management</h2>
           <p className="text-[13px] text-[var(--muted)] mt-0.5">{staff.length} agents</p>
         </div>
-        <Button variant="primary" onClick={() => setShowAdd(true)}><i className="ti ti-plus" /> Add staff</Button>
+        {tab === "team" && (
+          <Button variant="primary" onClick={() => setShowAdd(true)}><i className="ti ti-plus" /> Add staff</Button>
+        )}
       </div>
 
-      <Card>
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>{["Agent", "Route", "Today's deliveries", "Collection", "Status", "Actions"].map(h => (
-              <th key={h} className="text-[11px] uppercase tracking-wider text-[var(--faint)] text-left px-3.5 pb-3 pt-3 font-semibold">{h}</th>
-            ))}</tr>
-          </thead>
-          <tbody>
-            {isLoading ? Array.from({ length: 3 }).map((_, i) => (
-              <tr key={i}>{Array.from({ length: 6 }).map((_, j) => (
-                <td key={j} className="px-3.5 py-3.5 border-t border-[var(--border)]"><div className="h-4 bg-[var(--surface-2)] rounded animate-pulse" /></td>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 p-1 bg-[var(--surface-2)] rounded-[10px] w-fit">
+        {(["team", "attendance"] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`px-4 py-1.5 rounded-[8px] text-[13px] font-semibold cursor-pointer border-none transition-colors capitalize ${tab === t ? "bg-[var(--surface)] text-[var(--ink)] shadow-sm" : "bg-transparent text-[var(--muted)]"}`}>
+            {t === "team" ? "Team" : "Attendance"}
+          </button>
+        ))}
+      </div>
+
+      {tab === "team" && (
+        <Card>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr>{["Agent", "Route", "Today's deliveries", "Collection", "Status", "Actions"].map(h => (
+                <th key={h} className="text-[11px] uppercase tracking-wider text-[var(--faint)] text-left px-3.5 pb-3 pt-3 font-semibold">{h}</th>
               ))}</tr>
-            )) : staff.map((s: any) => (
-              <tr key={s.id} className="hover:bg-[var(--surface-2)]">
-                <td className="px-3.5 py-3.5 border-t border-[var(--border)]">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-[var(--blue-soft)] text-[var(--blue-ink)] grid place-items-center text-[12px] font-semibold flex-none">
-                      {initials(s.name)}
+            </thead>
+            <tbody>
+              {isLoading ? Array.from({ length: 3 }).map((_, i) => (
+                <tr key={i}>{Array.from({ length: 6 }).map((_, j) => (
+                  <td key={j} className="px-3.5 py-3.5 border-t border-[var(--border)]"><div className="h-4 bg-[var(--surface-2)] rounded animate-pulse" /></td>
+                ))}</tr>
+              )) : staff.map((s: any) => (
+                <tr key={s.id} className="hover:bg-[var(--surface-2)]">
+                  <td className="px-3.5 py-3.5 border-t border-[var(--border)]">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-[var(--blue-soft)] text-[var(--blue-ink)] grid place-items-center text-[12px] font-semibold flex-none">
+                        {initials(s.name)}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-[13.5px]">{s.name}</div>
+                        <div className="text-[11.5px] text-[var(--muted)]">{s.phone}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-semibold text-[13.5px]">{s.name}</div>
-                      <div className="text-[11.5px] text-[var(--muted)]">{s.phone}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-3.5 py-3.5 border-t border-[var(--border)] text-[13.5px]">
-                  {s.routeName ?? <span className="text-[var(--muted)]">Unassigned</span>}
-                </td>
-                <td className="px-3.5 py-3.5 border-t border-[var(--border)] font-mono text-[13.5px]">
-                  {s.completedDeliveries} / {s.totalStops}
-                </td>
-                <td className="px-3.5 py-3.5 border-t border-[var(--border)] font-mono font-semibold text-[13.5px]">
-                  {fmt(s.totalCollection)}
-                </td>
-                <td className="px-3.5 py-3.5 border-t border-[var(--border)]">{statusBadge(s.status)}</td>
-                <td className="px-3.5 py-3.5 border-t border-[var(--border)]">
-                  <Button onClick={() => { setAssignTarget({ staffId: s.id, name: s.name }); setRouteId(""); }}>
-                    <i className="ti ti-route text-xs" /> Assign route
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+                  </td>
+                  <td className="px-3.5 py-3.5 border-t border-[var(--border)] text-[13.5px]">
+                    {s.routeName ?? <span className="text-[var(--muted)]">Unassigned</span>}
+                  </td>
+                  <td className="px-3.5 py-3.5 border-t border-[var(--border)] font-mono text-[13.5px]">
+                    {s.completedDeliveries} / {s.totalStops}
+                  </td>
+                  <td className="px-3.5 py-3.5 border-t border-[var(--border)] font-mono font-semibold text-[13.5px]">
+                    {fmt(s.totalCollection)}
+                  </td>
+                  <td className="px-3.5 py-3.5 border-t border-[var(--border)]">{statusBadge(s.status)}</td>
+                  <td className="px-3.5 py-3.5 border-t border-[var(--border)]">
+                    <Button onClick={() => { setAssignTarget({ staffId: s.id, name: s.name }); setRouteId(""); }}>
+                      <i className="ti ti-route text-xs" /> Assign route
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
+      {tab === "attendance" && (
+        <Card>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr>{["Agent", "Date", "Check-in", "Check-out", "Duration", "Status"].map(h => (
+                <th key={h} className="text-[11px] uppercase tracking-wider text-[var(--faint)] text-left px-3.5 pb-3 pt-3 font-semibold">{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {attLoading ? Array.from({ length: 3 }).map((_, i) => (
+                <tr key={i}>{Array.from({ length: 6 }).map((_, j) => (
+                  <td key={j} className="px-3.5 py-3.5 border-t border-[var(--border)]"><div className="h-4 bg-[var(--surface-2)] rounded animate-pulse" /></td>
+                ))}</tr>
+              )) : attendance.length === 0 ? (
+                <tr><td colSpan={6} className="px-3.5 py-8 border-t border-[var(--border)] text-[var(--muted)] text-[13px] text-center">No attendance records today</td></tr>
+              ) : attendance.map((a: any) => {
+                const checkedIn = !!a.checkIn;
+                const checkedOut = !!a.checkOut;
+                let duration = "—";
+                if (a.checkIn && a.checkOut) {
+                  const mins = Math.round((new Date(a.checkOut).getTime() - new Date(a.checkIn).getTime()) / 60000);
+                  duration = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+                } else if (a.checkIn) {
+                  const mins = Math.round((Date.now() - new Date(a.checkIn).getTime()) / 60000);
+                  duration = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+                }
+                const statusV = !checkedIn ? "gray" : checkedOut ? "green" : "blue";
+                const statusL = !checkedIn ? "Absent" : checkedOut ? "Done" : "On duty";
+                return (
+                  <tr key={a.id} className="hover:bg-[var(--surface-2)]">
+                    <td className="px-3.5 py-3.5 border-t border-[var(--border)]">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-[var(--blue-soft)] text-[var(--blue-ink)] grid place-items-center text-[12px] font-semibold flex-none">
+                          {initials(a.staff?.user?.name ?? "?")}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-[13.5px]">{a.staff?.user?.name ?? "—"}</div>
+                          <div className="text-[11.5px] text-[var(--muted)]">{a.staff?.user?.phone ?? ""}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3.5 py-3.5 border-t border-[var(--border)] text-[13px]">{a.date ? fmtDate(a.date) : "—"}</td>
+                    <td className="px-3.5 py-3.5 border-t border-[var(--border)] font-mono text-[13px]">
+                      {checkedIn ? fmtTime(a.checkIn) : <span className="text-[var(--muted)]">—</span>}
+                      {a.checkInLat && <span className="ml-1 text-[10px] text-[var(--green-ink)]">📍</span>}
+                    </td>
+                    <td className="px-3.5 py-3.5 border-t border-[var(--border)] font-mono text-[13px]">
+                      {checkedOut ? fmtTime(a.checkOut) : <span className="text-[var(--muted)]">—</span>}
+                      {a.checkOutLat && <span className="ml-1 text-[10px] text-[var(--blue-ink)]">📍</span>}
+                    </td>
+                    <td className="px-3.5 py-3.5 border-t border-[var(--border)] font-mono text-[13px]">{duration}</td>
+                    <td className="px-3.5 py-3.5 border-t border-[var(--border)]">
+                      <Badge variant={statusV}>{statusL}</Badge>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
+      )}
 
       {showAdd && (
         <Modal title="Add delivery staff" onClose={() => { setShowAdd(false); setFormErr(""); }} width={380}>

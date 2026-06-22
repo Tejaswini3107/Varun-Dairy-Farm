@@ -1,9 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 
-const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+const BASE = (import.meta.env.VITE_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 function authH() {
   const t = localStorage.getItem("vdf_delivery_token");
   return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) };
+}
+
+function postLocation() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    p => {
+      fetch(`${BASE}/delivery/agent-location`, {
+        method: "POST", headers: authH(),
+        body: JSON.stringify({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      }).catch(() => {});
+    },
+    () => {},
+    { timeout: 5000, maximumAge: 30000 },
+  );
 }
 
 type Step = "list" | "load" | "card" | "fail" | "collect" | "done";
@@ -39,10 +53,10 @@ export default function DeliveryRoute() {
     setLoading(false);
   }
 
-  useEffect(() => { loadRoute(); }, []);
+  useEffect(() => { loadRoute(); postLocation(); }, []);
   useEffect(() => {
     if (step === "list") {
-      const t = setInterval(loadRoute, 10000);
+      const t = setInterval(() => { loadRoute(); postLocation(); }, 30000);
       return () => clearInterval(t);
     }
   }, [step]);

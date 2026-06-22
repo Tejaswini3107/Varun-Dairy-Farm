@@ -1,5 +1,26 @@
+import { useState } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Modal, Field, inputStyle } from "@/components/ui/Modal";
+
+const LS_KEY = "vdf_settings";
+const DEFAULT_DETAILS = {
+  businessName: "Varun Dairy Farm",
+  city: "Hyderabad, Telangana",
+  gst: "36XXXXX1234X1ZX",
+  phone: "+91 91000 00000",
+  cutoff: "9:00 PM (daily)",
+  window: "5:30 AM – 9:00 AM",
+};
+const FIELD_LABELS: Record<string, string> = {
+  businessName: "Business name", city: "City", gst: "GST number",
+  phone: "Support phone", cutoff: "Order cutoff time", window: "Delivery window",
+};
+function loadDetails() {
+  try { return { ...DEFAULT_DETAILS, ...JSON.parse(localStorage.getItem(LS_KEY) ?? "{}") }; }
+  catch { return DEFAULT_DETAILS; }
+}
 
 const roles = [
   { name: "Admin", desc: "Full access", badge: "green" as const, label: "All modules" },
@@ -9,13 +30,27 @@ const roles = [
 
 const integrations = [
   { icon: "ti-brand-google", label: "UPI", connected: true },
-  { icon: "ti-credit-card", label: "Razorpay", connected: true },
+  { icon: "ti-credit-card", label: "Razorpay", connected: false },
   { icon: "ti-device-mobile", label: "PhonePe", connected: false },
-  { icon: "ti-brand-whatsapp", label: "WhatsApp (Gupshup)", connected: true },
-  { icon: "ti-brand-firebase", label: "Firebase FCM", connected: true },
+  { icon: "ti-brand-whatsapp", label: "WhatsApp (Gupshup)", connected: false },
+  { icon: "ti-brand-firebase", label: "Firebase FCM", connected: false },
 ];
 
 export default function Settings() {
+  const [details, setDetails] = useState(loadDetails);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(details);
+  const [saved, setSaved] = useState(false);
+
+  function openEdit() { setDraft(details); setEditing(true); }
+  function saveEdit() {
+    setDetails(draft);
+    localStorage.setItem(LS_KEY, JSON.stringify(draft));
+    setEditing(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
   return (
     <div className="animate-fade">
       <div className="mb-5">
@@ -54,23 +89,35 @@ export default function Settings() {
       </div>
 
       <Card pad>
-        <CardHeader title="Business details" />
+        <div className="flex items-center justify-between mb-3">
+          <CardHeader title="Business details" />
+          <Button onClick={openEdit}><i className="ti ti-pencil text-xs" /> Edit</Button>
+        </div>
+        {saved && <p className="text-[12px] text-[var(--green-ink)] mb-2">✓ Changes saved</p>}
         <div className="grid grid-cols-2 gap-4">
-          {[
-            { label: "Business name", value: "Varun Dairy Farm" },
-            { label: "City", value: "Hyderabad, Telangana" },
-            { label: "GST number", value: "36XXXXX1234X1ZX" },
-            { label: "Support phone", value: "+91 91000 00000" },
-            { label: "Order cutoff time", value: "9:00 PM (daily)" },
-            { label: "Delivery window", value: "5:30 AM – 9:00 AM" },
-          ].map((f) => (
-            <div key={f.label} className="flex justify-between text-[13px] py-2 border-b border-[var(--border)] last:border-0">
-              <span className="text-[var(--muted)]">{f.label}</span>
-              <span className="font-medium">{f.value}</span>
+          {(Object.keys(FIELD_LABELS) as (keyof typeof DEFAULT_DETAILS)[]).map((k) => (
+            <div key={k} className="flex justify-between text-[13px] py-2 border-b border-[var(--border)] last:border-0">
+              <span className="text-[var(--muted)]">{FIELD_LABELS[k]}</span>
+              <span className="font-medium">{details[k]}</span>
             </div>
           ))}
         </div>
       </Card>
+
+      {editing && (
+        <Modal title="Edit business details" onClose={() => setEditing(false)}>
+          {(Object.keys(FIELD_LABELS) as (keyof typeof DEFAULT_DETAILS)[]).map((k) => (
+            <Field key={k} label={FIELD_LABELS[k]}>
+              <input style={inputStyle} value={draft[k]}
+                onChange={e => setDraft(d => ({ ...d, [k]: e.target.value }))} />
+            </Field>
+          ))}
+          <div className="flex gap-2 mt-2">
+            <Button className="flex-1" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button variant="primary" className="flex-1" onClick={saveEdit}>Save changes</Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
