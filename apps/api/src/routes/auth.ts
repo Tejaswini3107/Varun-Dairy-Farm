@@ -2,7 +2,7 @@ import { Router, type Router as ExpressRouter } from "express";
 import { z } from "zod";
 import { db } from "@varun/database";
 import { signToken } from "../middleware/auth";
-import { generateOtp } from "../services/notifications";
+import { generateOtp, sendOtp } from "../services/notifications";
 
 export const authRouter: ExpressRouter = Router();
 
@@ -32,7 +32,12 @@ authRouter.post("/send-otp", async (req, res, next) => {
 
     await db.otpCode.create({ data: { userId: user.id, code, expiresAt } });
 
-    res.json({ message: "OTP sent", code });
+    // Send SMS via MSG91 (fire-and-forget — don't block login flow)
+    sendOtp(phone, code).catch(err => console.error("sendOtp error:", err));
+
+    // Only expose code in response when MSG91 is not configured (local dev)
+    const isMsgConfigured = !!(process.env.MSG91_AUTH_KEY && process.env.MSG91_TEMPLATE_ID);
+    res.json({ message: "OTP sent", ...(isMsgConfigured ? {} : { code }) });
   } catch (err) {
     next(err);
   }
