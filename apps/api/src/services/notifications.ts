@@ -5,32 +5,28 @@ export function generateOtp(): string {
 }
 
 export async function sendOtp(phone: string, code: string): Promise<void> {
-  console.log(`📱 OTP for ${phone}: ${code}`);
-
-  const authKey = process.env.MSG91_AUTH_KEY;
-  const templateId = process.env.MSG91_TEMPLATE_ID;
-
-  if (!authKey || !templateId) {
-    // MSG91 not configured — OTP still works via dev response
+  if (process.env.NODE_ENV === "development") {
+    console.log(`📱 OTP for ${phone}: ${code}`);
     return;
   }
-
-  const res = await fetch("https://control.msg91.com/api/v5/otp", {
+  // Gupshup WhatsApp OTP
+  await fetch("https://api.gupshup.io/sm/api/v1/msg", {
     method: "POST",
-    headers: { "Content-Type": "application/json", authkey: authKey },
-    body: JSON.stringify({
-      template_id: templateId,
-      mobile: `91${phone}`,
-      otp_length: 4,
-      otp_expiry: 10,
-      otp: code,
-    }),
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      apikey: process.env.GUPSHUP_API_KEY!,
+    },
+    body: new URLSearchParams({
+      channel: "whatsapp",
+      source: "917834811114",
+      destination: `91${phone}`,
+      message: JSON.stringify({
+        type: "text",
+        text: `Your Varun Dairy OTP is *${code}*. Valid for 10 minutes.`,
+      }),
+      "src.name": process.env.GUPSHUP_APP_NAME!,
+    }) as any,
   });
-
-  if (!res.ok) {
-    const body = await res.text();
-    console.error(`MSG91 send failed (${res.status}): ${body}`);
-  }
 }
 
 export async function sendWhatsApp(phone: string, message: string): Promise<void> {
