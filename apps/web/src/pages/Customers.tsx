@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -42,6 +42,8 @@ export default function Customers() {
   const [showImport, setShowImport] = useState(false);
   const [csvText, setCsvText] = useState("");
   const [importResult, setImportResult] = useState<any>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["customers", search, page],
@@ -120,6 +122,25 @@ export default function Customers() {
     addCustomer.mutate({ ...form, phone: form.phone.replace(/\D/g, ""), stopSequence: form.stopSequence ? Number(form.stopSequence) : undefined, subscriptions: subs });
   }
 
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext === "csv") {
+      const text = await file.text();
+      setCsvText(text);
+    } else if (ext === "xlsx" || ext === "xls") {
+      const { read, utils } = await import("xlsx");
+      const buf = await file.arrayBuffer();
+      const wb = read(buf);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const csv = utils.sheet_to_csv(ws);
+      setCsvText(csv);
+    }
+    e.target.value = "";
+  }
+
   function parseCsv() {
     const lines = csvText.trim().split("\n").filter(Boolean);
     if (lines.length < 2) { alert("CSV must have a header row + at least one data row"); return; }
@@ -167,7 +188,7 @@ export default function Customers() {
               className="bg-transparent outline-none text-[var(--ink)] font-[inherit] text-[13px] w-44"
               placeholder="Search by name, phone, area…" />
           </div>
-          <Button onClick={() => { setShowImport(true); setCsvText(""); setImportResult(null); }}>
+          <Button onClick={() => { setShowImport(true); setCsvText(""); setImportResult(null); setFileName(null); }}>
             <i className="ti ti-upload text-xs" /> Import CSV
           </Button>
           <Button variant="primary" onClick={() => { setAddStep(1); setForm({ ...BLANK }); setSubRows([]); setFormErr(""); }}>
@@ -415,10 +436,38 @@ export default function Customers() {
                 Paste CSV with headers: <code className="bg-[var(--surface-2)] px-1 rounded text-[11px]">name, phone, address, area, city, route, milk, curd, paneer, ghee</code>
               </p>
               <p className="text-[11.5px] text-[var(--muted)] mb-3">Route column should match route names (partial match). Qty columns are optional.</p>
+
+              {/* File attach button */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                style={{ display: "none" }}
+                onChange={handleFileUpload}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 14px", marginBottom: 10, borderRadius: 8, border: "1.5px dashed var(--border-2)", background: "var(--surface-2)", color: "var(--muted)", fontSize: 13, fontWeight: 500, cursor: "pointer", boxSizing: "border-box" }}
+              >
+                <i className="ti ti-paperclip" style={{ fontSize: 16 }} />
+                {fileName ? (
+                  <span style={{ color: "var(--ink)", fontWeight: 600 }}>{fileName}</span>
+                ) : (
+                  <span>Attach CSV or Excel file (.csv, .xlsx, .xls)</span>
+                )}
+                {fileName && (
+                  <span
+                    onClick={e => { e.stopPropagation(); setCsvText(""); setFileName(null); }}
+                    style={{ marginLeft: "auto", fontSize: 12, color: "var(--red-ink)", cursor: "pointer" }}
+                  >✕ Clear</span>
+                )}
+              </button>
+
               <textarea
                 value={csvText}
                 onChange={e => setCsvText(e.target.value)}
-                rows={10}
+                rows={8}
                 placeholder={"name,phone,address,area,route,milk,curd\nPriya Sharma,9876543210,Flat 12 Green Park,Kondapur,Route A,2,1\nRaj Kumar,9876543211,HNo 45 Madhapur,Madhapur,Route B,3,0"}
                 style={{ width: "100%", fontFamily: "monospace", fontSize: 12, padding: 10, borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface)", color: "var(--ink)", resize: "vertical", boxSizing: "border-box" }}
               />
