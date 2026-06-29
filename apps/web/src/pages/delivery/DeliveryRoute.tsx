@@ -79,6 +79,13 @@ export default function DeliveryRoute() {
     setPartialAmt("");
     setPartialMethod(null);
     setStep("card");
+    // Mark as out_for_delivery so admin can track live progress
+    if (order.status === "assigned") {
+      fetch(`${BASE}/orders/${order.id}/status`, {
+        method: "PATCH", headers: authH(),
+        body: JSON.stringify({ status: "out_for_delivery" }),
+      }).catch(() => {});
+    }
   }
 
   function openCollect(order: any) {
@@ -119,7 +126,7 @@ export default function DeliveryRoute() {
     try {
       await fetch(`${BASE}/orders/${activeOrder.id}/status`, {
         method: "PATCH", headers: authH(),
-        body: JSON.stringify({ status: "failed" }),
+        body: JSON.stringify({ status: "failed", notes: reason }),
       });
       backToList();
     } catch (e: any) { alert("Error: " + e.message); }

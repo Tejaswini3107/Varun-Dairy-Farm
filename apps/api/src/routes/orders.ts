@@ -58,9 +58,11 @@ ordersRouter.get("/today", async (_req, res, next) => {
     const orders = await db.order.findMany({
       where: { date: { gte: today, lt: tomorrow } },
       include: {
-        customer: { include: { user: { select: { name: true } } } },
+        customer: { include: { user: { select: { name: true, phone: true } } } },
         items: { include: { product: true } },
+        deliveryAgent: { include: { user: { select: { name: true } } } },
       },
+      orderBy: [{ stopSequence: "asc" }, { createdAt: "desc" }],
     });
 
     const grouped = {
@@ -187,6 +189,7 @@ ordersRouter.patch("/:id/status", async (req, res, next) => {
       paymentMethod: z.enum(["wallet", "upi", "cash", "razorpay"]).optional(),
       proofImageUrl: z.string().optional(),
       otp: z.string().optional(),
+      notes: z.string().optional(),
     });
 
     const data = schema.parse(req.body);
