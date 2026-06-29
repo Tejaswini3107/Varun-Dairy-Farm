@@ -104,8 +104,7 @@ export async function recalculateOrderForCustomer(customerId: string): Promise<a
       where: {
         customerId,
         date: { gte: today, lt: tomorrow },
-        // Only touch mutable orders — never interfere with delivery in progress
-        status: { in: ["pending", "assigned"] },
+        status: { in: ["pending", "assigned", "out_for_delivery"] },
       },
     }),
   ]);

@@ -49,14 +49,25 @@ export default function DeliveryRoute() {
 
   async function loadRoute() {
     const res = await fetch(`${BASE}/delivery/my-route`, { headers: authH() }).then(r => r.json()).catch(() => null);
-    if (res?.data) setData(res.data);
+    if (res?.data) {
+      setData(res.data);
+      // Keep active card in sync if items/amount changed while agent is viewing it
+      setActiveOrder((prev: any) => {
+        if (!prev) return prev;
+        const fresh = res.data.orders?.find((o: any) => o.id === prev.id);
+        return fresh ?? prev;
+      });
+    }
     setLoading(false);
   }
 
   useEffect(() => { loadRoute(); postLocation(); }, []);
   useEffect(() => {
-    if (step === "list") {
-      const t = setInterval(() => { loadRoute(); postLocation(); }, 30000);
+    if (step === "list" || step === "card") {
+      const t = setInterval(() => {
+        loadRoute();
+        if (step === "list") postLocation();
+      }, 30000);
       return () => clearInterval(t);
     }
   }, [step]);
