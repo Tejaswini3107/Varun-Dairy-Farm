@@ -1,12 +1,13 @@
 import { cn } from "@/lib/utils";
 
-export function Card({ children, className, pad }: {
+export function Card({ children, className, pad, onClick }: {
   children: React.ReactNode;
   className?: string;
   pad?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <div className={cn("card", pad && "p-[18px]", className)}>
+    <div className={cn("card", pad && "p-[18px]", className)} onClick={onClick}>
       {children}
     </div>
   );
