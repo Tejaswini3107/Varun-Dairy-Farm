@@ -20,7 +20,7 @@ function postLocation() {
   );
 }
 
-type Step = "list" | "load" | "card" | "fail" | "collect" | "done";
+type Step = "list" | "load" | "card" | "start" | "fail" | "collect" | "done";
 
 const FAIL_REASONS = [
   "House Locked",
@@ -63,7 +63,7 @@ export default function DeliveryRoute() {
 
   useEffect(() => { loadRoute(); postLocation(); }, []);
   useEffect(() => {
-    if (step === "list" || step === "card") {
+    if (step === "list" || step === "card" || step === "start") {
       const t = setInterval(() => {
         loadRoute();
         if (step === "list") postLocation();
@@ -78,14 +78,27 @@ export default function DeliveryRoute() {
     setShowPartial(false);
     setPartialAmt("");
     setPartialMethod(null);
-    setStep("card");
-    // Mark as out_for_delivery so admin can track live progress
-    if (order.status === "assigned") {
-      fetch(`${BASE}/orders/${order.id}/status`, {
+    // If already out_for_delivery or delivered, skip the start screen
+    if (["out_for_delivery", "delivered", "failed"].includes(order.status)) {
+      setStep("card");
+    } else {
+      setStep("start");
+    }
+  }
+
+  async function startDelivery() {
+    if (!activeOrder) return;
+    setSubmitting(true);
+    try {
+      await fetch(`${BASE}/orders/${activeOrder.id}/status`, {
         method: "PATCH", headers: authH(),
         body: JSON.stringify({ status: "out_for_delivery" }),
-      }).catch(() => {});
-    }
+      });
+      // Update local state so card shows correct status
+      setActiveOrder((prev: any) => prev ? { ...prev, status: "out_for_delivery" } : prev);
+      setStep("card");
+    } catch (e: any) { alert("Error: " + e.message); }
+    finally { setSubmitting(false); }
   }
 
   function openCollect(order: any) {
@@ -379,6 +392,75 @@ export default function DeliveryRoute() {
   );
 
   // ── DELIVERY CARD ─────────────────────────────────────────────────────────
+  // ── START DELIVERY SCREEN ─────────────────────────────────────────────────
+  if (step === "start") {
+    const customerPhone = activeOrder?.customer?.user?.phone ?? "";
+    const addr = activeOrder?.customer?.address ?? "";
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr + " " + (activeOrder?.customer?.route?.area ?? ""))}`;
+
+    return (
+      <div style={{ padding: 16, paddingBottom: 24, display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={() => setStep("list")}
+            style={{ width: 46, height: 46, borderRadius: 13, border: "1.5px solid var(--border-2)", background: "var(--surface)", fontSize: 22, cursor: "pointer", display: "grid", placeItems: "center" }}>
+            ←
+          </button>
+          <span style={{ background: "var(--blue-soft)", color: "var(--blue-ink)", borderRadius: 20, padding: "6px 16px", fontSize: 15, fontWeight: 800 }}>
+            STOP #{activeOrder?.stopSequence ?? "—"}
+          </span>
+        </div>
+
+        {/* Customer info */}
+        <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 20, padding: 20 }}>
+          <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 6 }}>{activeOrder?.customer?.user?.name ?? "—"}</div>
+          <div style={{ fontSize: 15, color: "var(--muted)", marginBottom: 3 }}>{addr || "—"}</div>
+          <div style={{ fontSize: 15, color: "var(--muted)" }}>{customerPhone}</div>
+        </div>
+
+        {/* Products summary */}
+        <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 20, padding: 20 }}>
+          <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, letterSpacing: 1, marginBottom: 14 }}>PRODUCTS TO DELIVER</div>
+          {activeOrder?.items?.map((item: any) => (
+            <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontSize: 18, fontWeight: 700 }}>{item.product?.name ?? "—"}</span>
+              <span style={{ fontSize: 20, fontWeight: 800, fontFamily: "monospace", color: "var(--blue-ink)" }}>×{item.quantity}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Collection due */}
+        {activeOrder?.totalAmount > 0 && (
+          <div style={{ background: "var(--amber-soft)", border: "1.5px solid var(--amber)", borderRadius: 20, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: "var(--amber-ink)" }}>Collection Due</span>
+            <span style={{ fontSize: 28, fontWeight: 800, fontFamily: "monospace", color: "var(--amber-ink)" }}>₹{activeOrder.totalAmount.toLocaleString("en-IN")}</span>
+          </div>
+        )}
+
+        {/* START DELIVERY — big CTA */}
+        <button onClick={startDelivery} disabled={submitting}
+          style={btn({ height: 72, background: "var(--blue)", color: "#fff", fontSize: 22, letterSpacing: 1, gap: 10 })}>
+          {submitting ? "Notifying customer…" : "🛵  START DELIVERY"}
+        </button>
+        <div style={{ textAlign: "center", fontSize: 12, color: "var(--muted)", marginTop: -6 }}>
+          Customer will be notified when you tap
+        </div>
+
+        {/* Call + Map */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 4 }}>
+          <a href={`tel:${customerPhone}`}
+            style={{ height: 56, background: "var(--blue-soft)", color: "var(--blue-ink)", border: "2px solid var(--blue)", borderRadius: 18, fontSize: 18, fontWeight: 800, display: "grid", placeItems: "center", textDecoration: "none" }}>
+            CALL
+          </a>
+          <a href={mapsUrl} target="_blank" rel="noreferrer"
+            style={{ height: 56, background: "var(--surface)", color: "var(--ink)", border: "1.5px solid var(--border-2)", borderRadius: 18, fontSize: 18, fontWeight: 800, display: "grid", placeItems: "center", textDecoration: "none" }}>
+            MAP
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   if (step === "card") {
     const customerPhone = activeOrder?.customer?.user?.phone ?? "";
     const addr = activeOrder?.customer?.address ?? "";

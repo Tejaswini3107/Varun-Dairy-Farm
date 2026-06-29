@@ -243,11 +243,18 @@ ordersRouter.patch("/:id/status", async (req, res, next) => {
     }
 
     // Push notification to customer
-    if (data.status === "delivered" && order.customer.user.fcmToken) {
-      await sendPushNotification(order.customer.user.fcmToken, {
-        title: "Delivery complete 🥛",
-        body: `Your order has been delivered. ₹${order.totalAmount} debited.`,
-      }).catch(() => {});
+    if (order.customer.user.fcmToken) {
+      if (data.status === "out_for_delivery") {
+        sendPushNotification(order.customer.user.fcmToken, {
+          title: "Your delivery is on the way 🛵",
+          body: `Our delivery agent is heading to you now. Keep your door open!`,
+        }).catch(() => {});
+      } else if (data.status === "delivered") {
+        sendPushNotification(order.customer.user.fcmToken, {
+          title: "Delivery complete 🥛",
+          body: `Your order has been delivered. ₹${order.totalAmount} debited.`,
+        }).catch(() => {});
+      }
     }
 
     res.json({ data: order });
