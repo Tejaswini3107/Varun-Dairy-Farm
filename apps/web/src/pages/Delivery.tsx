@@ -8,6 +8,14 @@ import { Card } from "@/components/ui/Card";
 import { LiveBadge } from "@/components/ui/LiveBadge";
 import { Modal, Field, inputStyle, selectStyle } from "@/components/ui/Modal";
 
+type RouteOrder = {
+  id: string; stopSequence: number | null; status: string;
+  customerName: string; customerPhone: string; address: string;
+  totalAmount: number; collectedAmount: number | null; paymentMethod: string | null;
+  paymentStatus: string | null; deliveredAt: string | null;
+  agentName: string | null; items: string[];
+};
+
 type Route = {
   id: string; name: string; area: string;
   agentId: string | null; agentName: string | null; agentPhone: string | null;
@@ -17,8 +25,29 @@ type Route = {
 
 const BLANK_ROUTE = { name: "", area: "", agentId: "" };
 
+const STATUS_COLOR: Record<string, string> = {
+  pending: "var(--amber)",
+  assigned: "var(--blue)",
+  out_for_delivery: "var(--blue)",
+  delivered: "var(--green)",
+  failed: "var(--red)",
+  cancelled: "var(--muted)",
+};
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Pending", assigned: "Assigned",
+  out_for_delivery: "On the way", delivered: "Delivered",
+  failed: "Failed", cancelled: "Cancelled",
+};
+
 export default function Delivery() {
   const qc = useQueryClient();
+
+  // Route drill-down
+  const [drillRoute, setDrillRoute] = useState<Route | null>(null);
+  const [overrideOrder, setOverrideOrder] = useState<RouteOrder | null>(null);
+  const [overrideStatus, setOverrideStatus] = useState("");
+  const [overrideAmt, setOverrideAmt] = useState("");
+  const [overrideMethod, setOverrideMethod] = useState("");
 
   // Modal states
   const [showAdd, setShowAdd] = useState(false);
@@ -74,6 +103,19 @@ export default function Delivery() {
   const autoAssign = useMutation({
     mutationFn: () => api.post<{ message: string }>("/delivery/routes/auto-assign", {}),
     onSuccess: (d) => { alert(d.message); qc.invalidateQueries(); },
+    onError: (e: Error) => alert(e.message),
+  });
+
+  const { data: drillRes, isLoading: drillLoading } = useQuery({
+    queryKey: ["route-orders", drillRoute?.id],
+    queryFn: () => api.get<{ data: RouteOrder[] }>(`/delivery/routes/${drillRoute!.id}/orders`),
+    enabled: !!drillRoute,
+    refetchInterval: 5000,
+  });
+
+  const adminOverride = useMutation({
+    mutationFn: ({ id, ...body }: any) => api.patch(`/delivery/orders/${id}/admin-status`, body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["route-orders"] }); qc.invalidateQueries({ queryKey: ["delivery-routes"] }); setOverrideOrder(null); },
     onError: (e: Error) => alert(e.message),
   });
 
@@ -161,7 +203,7 @@ export default function Delivery() {
           {routes.map(route => {
             const pct = route.totalStops > 0 ? Math.round((route.completedStops / route.totalStops) * 100) : 0;
             return (
-              <Card key={route.id} className="p-4">
+              <Card key={route.id} className="p-4 cursor-pointer hover:border-[var(--blue)] transition-colors" onClick={() => setDrillRoute(route)}>
                 {/* Top row */}
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -172,11 +214,11 @@ export default function Delivery() {
                   </div>
                   <div className="flex items-center gap-2">
                     {statusBadge(route.status)}
-                    <button onClick={() => openEdit(route)}
+                    <button onClick={e => { e.stopPropagation(); openEdit(route); }}
                       className="w-7 h-7 rounded-[7px] border border-[var(--border)] bg-transparent text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] grid place-items-center cursor-pointer">
                       <i className="ti ti-edit text-xs" />
                     </button>
-                    <button onClick={() => { if (confirm(`Delete route "${route.name}"?`)) deleteRoute.mutate(route.id); }}
+                    <button onClick={e => { e.stopPropagation(); if (confirm(`Delete route "${route.name}"?`)) deleteRoute.mutate(route.id); }}
                       className="w-7 h-7 rounded-[7px] border border-[var(--border)] bg-transparent text-[var(--muted)] hover:text-[var(--red-ink)] hover:border-[var(--red)] hover:bg-[var(--red-soft)] grid place-items-center cursor-pointer">
                       <i className="ti ti-trash text-xs" />
                     </button>
@@ -212,6 +254,13 @@ export default function Delivery() {
                   </div>
                 )}
 
+                {/* View stops hint */}
+                {route.totalStops > 0 && (
+                  <div className="text-[11.5px] text-[var(--blue-ink)] font-semibold mb-2 text-right">
+                    <i className="ti ti-list-details mr-1" />View live stops →
+                  </div>
+                )}
+
                 {/* Agent row */}
                 {route.agentId ? (
                   <div className="flex items-center justify-between bg-[var(--green-soft)] rounded-[10px] px-3 py-2">
@@ -225,18 +274,18 @@ export default function Delivery() {
                       </div>
                     </div>
                     <div className="flex gap-1.5">
-                      <button onClick={() => { setAssignModal(route); setAssignAgentId(route.agentId ?? ""); setErr(""); }}
+                      <button onClick={e => { e.stopPropagation(); setAssignModal(route); setAssignAgentId(route.agentId ?? ""); setErr(""); }}
                         className="text-[11.5px] font-semibold text-[var(--green-ink)] bg-[var(--green-soft)] border border-[var(--green)] rounded-[7px] px-2 py-1 cursor-pointer hover:bg-[var(--green)] hover:text-white transition-colors">
                         Change
                       </button>
-                      <button onClick={() => removeAgent.mutate(route.id)}
+                      <button onClick={e => { e.stopPropagation(); removeAgent.mutate(route.id); }}
                         className="text-[11.5px] font-semibold text-[var(--muted)] border border-[var(--border)] rounded-[7px] px-2 py-1 cursor-pointer hover:text-[var(--red-ink)] hover:border-[var(--red)] transition-colors bg-transparent">
                         Remove
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => { setAssignModal(route); setAssignAgentId(""); setErr(""); }}
+                  <button onClick={e => { e.stopPropagation(); setAssignModal(route); setAssignAgentId(""); setErr(""); }}
                     className="w-full border border-dashed border-[var(--border-2)] rounded-[10px] py-2.5 text-[13px] font-semibold text-[var(--muted)] hover:border-[var(--blue)] hover:text-[var(--blue-ink)] hover:bg-[var(--blue-soft)] transition-colors cursor-pointer bg-transparent">
                     <i className="ti ti-user-plus mr-1" /> Assign default agent
                   </button>
@@ -319,6 +368,103 @@ export default function Delivery() {
               disabled={!assignAgentId || assignAgent.isPending}
               onClick={() => assignAgent.mutate({ routeId: assignModal.id, agentId: assignAgentId })}>
               {assignAgent.isPending ? "Assigning…" : "Assign & dispatch"}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Route drill-down modal ── */}
+      {drillRoute && (
+        <Modal title={`${drillRoute.name} · Live stops`} onClose={() => setDrillRoute(null)} width={640}>
+          <div className="flex items-center gap-3 mb-4">
+            <LiveBadge label="refreshing every 5s" />
+            <span className="text-[13px] text-[var(--muted)]">
+              {drillRoute.completedStops}/{drillRoute.totalStops} stops · {fmt(drillRoute.todayCollection)} collected
+            </span>
+          </div>
+
+          {drillLoading && <p className="text-[13px] text-[var(--muted)] py-4 text-center">Loading stops…</p>}
+
+          {!drillLoading && (drillRes?.data ?? []).length === 0 && (
+            <p className="text-[13px] text-[var(--muted)] py-4 text-center">No orders generated for this route today.</p>
+          )}
+
+          <div style={{ maxHeight: 460, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+            {(drillRes?.data ?? []).map((o, i) => (
+              <div key={o.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", background: o.status === "delivered" ? "var(--green-soft)" : o.status === "failed" ? "var(--red-soft)" : "var(--surface)" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", minWidth: 22 }}>#{o.stopSequence ?? i + 1}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700 }}>{o.customerName}</span>
+                      <span style={{ fontSize: 11, color: "var(--muted)" }}>{o.customerPhone}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4, paddingLeft: 30 }}>{o.address}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", paddingLeft: 30 }}>{o.items.join(", ")}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: STATUS_COLOR[o.status] ?? "var(--muted)", background: "rgba(0,0,0,0.06)", borderRadius: 6, padding: "2px 8px" }}>
+                      {STATUS_LABEL[o.status] ?? o.status}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace" }}>{fmt(o.totalAmount)}</span>
+                    {o.collectedAmount != null && o.collectedAmount > 0 && (
+                      <span style={{ fontSize: 11, color: "var(--green-ink)" }}>
+                        ₹{o.collectedAmount.toLocaleString("en-IN")} {o.paymentMethod ?? ""} ✓
+                      </span>
+                    )}
+                    {o.deliveredAt && (
+                      <span style={{ fontSize: 10, color: "var(--muted)" }}>
+                        {new Date(o.deliveredAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => { setOverrideOrder(o); setOverrideStatus(o.status); setOverrideAmt(String(o.collectedAmount ?? o.totalAmount)); setOverrideMethod(o.paymentMethod ?? "cash"); }}
+                      style={{ fontSize: 11, fontWeight: 600, color: "var(--blue-ink)", border: "1px solid var(--blue)", borderRadius: 6, padding: "2px 8px", background: "var(--blue-soft)", cursor: "pointer" }}>
+                      Override
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Admin status override modal ── */}
+      {overrideOrder && (
+        <Modal title={`Override — ${overrideOrder.customerName}`} onClose={() => setOverrideOrder(null)} width={380}>
+          <p className="text-[12.5px] text-[var(--muted)] mb-3">Manually set the delivery status for this stop.</p>
+          <Field label="Status">
+            <select style={{ ...({ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface)", color: "var(--ink)", fontSize: 13 }) } as React.CSSProperties}
+              value={overrideStatus} onChange={e => setOverrideStatus(e.target.value)}>
+              {["pending","assigned","out_for_delivery","delivered","failed","cancelled"].map(s => (
+                <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>
+              ))}
+            </select>
+          </Field>
+          {overrideStatus === "delivered" && (
+            <>
+              <Field label="Amount collected (₹)">
+                <input type="number" style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface)", color: "var(--ink)", fontSize: 13, boxSizing: "border-box" } as React.CSSProperties}
+                  value={overrideAmt} onChange={e => setOverrideAmt(e.target.value)} />
+              </Field>
+              <Field label="Payment method">
+                <select style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border-2)", background: "var(--surface)", color: "var(--ink)", fontSize: 13 } as React.CSSProperties}
+                  value={overrideMethod} onChange={e => setOverrideMethod(e.target.value)}>
+                  {["cash","upi","wallet","razorpay"].map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </Field>
+            </>
+          )}
+          <div className="flex gap-2 mt-3">
+            <Button className="flex-1" onClick={() => setOverrideOrder(null)}>Cancel</Button>
+            <Button variant="primary" className="flex-1" disabled={adminOverride.isPending}
+              onClick={() => adminOverride.mutate({
+                id: overrideOrder.id,
+                status: overrideStatus,
+                ...(overrideStatus === "delivered" ? { collectedAmount: parseFloat(overrideAmt) || 0, paymentMethod: overrideMethod } : {}),
+              })}>
+              {adminOverride.isPending ? "Saving…" : "Save override"}
             </Button>
           </div>
         </Modal>

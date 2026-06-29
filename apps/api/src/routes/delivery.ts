@@ -201,6 +201,76 @@ deliveryRouter.patch("/routes/:id/start", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /delivery/routes/:id/orders — admin drill-down: all today's orders for a route
+deliveryRouter.get("/routes/:id/orders", requireRole("admin", "manager"), async (req, res, next) => {
+  try {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const orders = await db.order.findMany({
+      where: { routeId: req.params.id, date: { gte: today, lt: tomorrow }, status: { not: "cancelled" } },
+      include: {
+        customer: {
+          include: { user: { select: { name: true, phone: true } } },
+        },
+        items: { include: { product: { select: { name: true } } } },
+        deliveryAgent: { include: { user: { select: { name: true } } } },
+      },
+      orderBy: { stopSequence: "asc" },
+    });
+
+    const mapped = orders.map(o => ({
+      id: o.id,
+      stopSequence: o.stopSequence,
+      status: o.status,
+      customerName: o.customer.user.name,
+      customerPhone: o.customer.user.phone,
+      address: o.customer.address,
+      totalAmount: o.totalAmount,
+      collectedAmount: o.collectedAmount,
+      paymentMethod: o.paymentMethod,
+      paymentStatus: o.paymentStatus,
+      deliveredAt: o.deliveredAt,
+      agentName: o.deliveryAgent?.user.name ?? null,
+      items: o.items.map(i => `${i.product.name} ×${i.quantity}`),
+    }));
+
+    res.json({ data: mapped });
+  } catch (err) { next(err); }
+});
+
+// PATCH /delivery/orders/:id/admin-status — admin manually override order status
+deliveryRouter.patch("/orders/:id/admin-status", requireRole("admin", "manager"), async (req, res, next) => {
+  try {
+    const { status, collectedAmount, paymentMethod } = z.object({
+      status: z.enum(["pending", "assigned", "out_for_delivery", "delivered", "failed", "cancelled"]),
+      collectedAmount: z.number().optional(),
+      paymentMethod: z.enum(["wallet", "upi", "cash", "razorpay"]).optional(),
+    }).parse(req.body);
+
+    const order = await db.order.update({
+      where: { id: req.params.id },
+      data: {
+        status,
+        ...(collectedAmount !== undefined ? { collectedAmount } : {}),
+        ...(paymentMethod ? { paymentMethod } : {}),
+        ...(status === "delivered" ? { deliveredAt: new Date() } : {}),
+      },
+      include: { route: true },
+    });
+
+    // Update route completedStops count
+    if (order.routeId) {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+      const done = await db.order.count({ where: { routeId: order.routeId, date: { gte: today, lt: tomorrow }, status: "delivered" } });
+      await db.route.update({ where: { id: order.routeId }, data: { completedStops: done } });
+    }
+
+    res.json({ data: order });
+  } catch (err) { next(err); }
+});
+
 // ── Agent-facing ──────────────────────────────────────────────────────────────
 
 // GET /delivery/my-route
