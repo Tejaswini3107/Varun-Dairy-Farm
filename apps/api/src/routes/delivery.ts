@@ -280,7 +280,9 @@ deliveryRouter.patch("/orders/:id/admin-status", requireRole("admin", "manager")
 // GET /delivery/my-route
 deliveryRouter.get("/my-route", async (req: AuthRequest, res, next) => {
   try {
-    const staffId = req.user?.staffId;
+    // Look up the live Staff record by userId so stale JWT staffId doesn't break routing
+    const staffRecord = await db.staff.findUnique({ where: { userId: req.user!.id } });
+    const staffId = staffRecord?.id ?? req.user?.staffId;
     if (!staffId) { res.status(403).json({ error: "Not a delivery agent" }); return; }
 
     const today = new Date(); today.setHours(0, 0, 0, 0);
