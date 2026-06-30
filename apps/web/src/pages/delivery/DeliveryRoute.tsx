@@ -165,14 +165,15 @@ export default function DeliveryRoute() {
     loadRoute();
   }
 
-  const summary = data?.summary ?? { total: 0, done: 0, pending: 0, totalCollection: 0 };
+  const summary = data?.summary ?? { total: 0, done: 0, skipped: 0, pending: 0, totalCollection: 0 };
   const orders: any[] = data?.orders ?? [];
+  const isSkipped = (o: any) => o.status === "cancelled" && o.notes === "customer_skip";
   const pendingOrders = orders
     .filter(o => !["delivered", "failed", "cancelled"].includes(o.status))
     .sort((a, b) => (a.stopSequence ?? 0) - (b.stopSequence ?? 0));
 
   const doneOrders = orders
-    .filter(o => ["delivered", "failed", "cancelled"].includes(o.status))
+    .filter(o => o.status === "delivered" || o.status === "failed" || isSkipped(o))
     .sort((a, b) => (a.stopSequence ?? 0) - (b.stopSequence ?? 0));
 
   // aggregate product totals across all orders for load check
@@ -230,10 +231,11 @@ export default function DeliveryRoute() {
       </div>
 
       {/* Stats strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
         {[
           { label: "TOTAL", value: summary.total, color: "var(--ink)" },
           { label: "DONE", value: summary.done, color: "var(--green-ink)" },
+          { label: "SKIPPED", value: summary.skipped, color: "var(--muted)" },
           { label: "LEFT", value: summary.pending, color: "var(--blue-ink)" },
         ].map(s => (
           <div key={s.label} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "12px 0", textAlign: "center" }}>

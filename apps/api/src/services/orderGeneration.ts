@@ -146,7 +146,7 @@ export async function recalculateOrderForCustomer(customerId: string): Promise<a
 
   if (subs.length === 0) return null;
 
-  // No order yet today — create one
+  // No order yet today — create one, auto-assign if route has an agent
   const items = subs.map(s => ({
     productId: s.productId,
     quantity: s.quantity,
@@ -154,6 +154,7 @@ export async function recalculateOrderForCustomer(customerId: string): Promise<a
     totalPrice: s.quantity * s.product.pricePerUnit,
   }));
   const totalAmount = items.reduce((sum, i) => sum + i.totalPrice, 0);
+  const route = await db.route.findUnique({ where: { id: customer.routeId }, select: { agentId: true } });
 
   return db.order.create({
     data: {
@@ -162,6 +163,8 @@ export async function recalculateOrderForCustomer(customerId: string): Promise<a
       totalAmount,
       otp: generateOtp(),
       date: today,
+      status: route?.agentId ? "assigned" : "pending",
+      deliveryAgentId: route?.agentId ?? null,
       items: { create: items },
     },
     include: {

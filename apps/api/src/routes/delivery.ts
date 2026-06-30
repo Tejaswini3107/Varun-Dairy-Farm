@@ -208,7 +208,11 @@ deliveryRouter.get("/routes/:id/orders", requireRole("admin", "manager"), async 
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
 
     const orders = await db.order.findMany({
-      where: { routeId: req.params.id, date: { gte: today, lt: tomorrow }, status: { not: "cancelled" } },
+      where: {
+        routeId: req.params.id,
+        date: { gte: today, lt: tomorrow },
+        OR: [{ status: { not: "cancelled" } }, { status: "cancelled", notes: "customer_skip" }],
+      },
       include: {
         customer: {
           include: { user: { select: { name: true, phone: true } } },
@@ -284,7 +288,15 @@ deliveryRouter.get("/my-route", async (req: AuthRequest, res, next) => {
 
     const staffRoute = await db.route.findFirst({ where: { agentId: staffId } });
 
-    const where: any = { date: { gte: today, lt: tomorrow }, status: { notIn: ["cancelled"] } };
+    // Include customer-skipped orders (cancelled + notes=customer_skip) so
+    // agents see the full stop list. Exclude only admin-cancelled orders.
+    const where: any = {
+      date: { gte: today, lt: tomorrow },
+      OR: [
+        { status: { not: "cancelled" } },
+        { status: "cancelled", notes: "customer_skip" },
+      ],
+    };
     if (staffRoute) {
       where.routeId = staffRoute.id;
     } else {
@@ -317,7 +329,8 @@ deliveryRouter.get("/my-route", async (req: AuthRequest, res, next) => {
         summary: {
           total: ordersWithStops.length,
           done: ordersWithStops.filter(o => o.status === "delivered").length,
-          pending: ordersWithStops.filter(o => o.status !== "delivered" && o.status !== "failed").length,
+          skipped: ordersWithStops.filter(o => o.status === "cancelled" && o.notes === "customer_skip").length,
+          pending: ordersWithStops.filter(o => !["delivered", "failed", "cancelled"].includes(o.status)).length,
           totalCollection,
         },
       },
