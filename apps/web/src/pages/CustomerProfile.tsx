@@ -81,6 +81,7 @@ export default function CustomerProfile() {
       address: c.address, area: c.area, city: c.city ?? "", pincode: c.pincode ?? "",
       landmark: c.landmark ?? "", alternateMobile: c.alternateMobile ?? "",
       notes: c.notes ?? "", stopSequence: c.stopSequence ?? "",
+      status: c.status, billingMode: c.billingMode ?? "per_delivery",
     });
     setEditModal(true);
   }
@@ -269,6 +270,12 @@ export default function CustomerProfile() {
               <input style={inputStyle} value={editForm[key] ?? ""} onChange={e => setEditForm((f: any) => ({ ...f, [key]: e.target.value }))} />
             </Field>
           ))}
+          <Field label="Billing mode">
+            <select style={selectStyle} value={editForm.billingMode} onChange={e => setEditForm((f: any) => ({ ...f, billingMode: e.target.value }))}>
+              <option value="per_delivery">Per delivery (default)</option>
+              <option value="monthly">Monthly billing</option>
+            </select>
+          </Field>
           <Field label="Status">
             <select style={selectStyle} value={editForm.status ?? c.status} onChange={e => setEditForm((f: any) => ({ ...f, status: e.target.value }))}>
               <option value="active">Active</option>

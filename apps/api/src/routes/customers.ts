@@ -118,6 +118,7 @@ customersRouter.get("/", requireRole("admin", "manager"), async (req, res, next)
         address: c.address, area: c.area, landmark: c.landmark,
         routeId: c.routeId, routeName: c.route.name, stopSequence: c.stopSequence,
         walletBalance: c.walletBalance, autoPay: c.autoPay, status: c.status,
+        billingMode: c.billingMode,
         subscriptions: c.subscriptions, createdAt: c.createdAt,
         route: c.route,
       })),
@@ -417,6 +418,7 @@ customersRouter.patch("/:id", requireRole("admin", "manager"), async (req, res, 
       landmark: z.string().optional(), alternateMobile: z.string().optional(),
       notes: z.string().optional(), stopSequence: z.number().int().optional(),
       status: z.enum(["active", "inactive", "blocked"]).optional(),
+      billingMode: z.enum(["per_delivery", "monthly"]).optional(),
     });
     const data = schema.parse(req.body);
     const customer = await db.customer.update({ where: { id: req.params.id }, data });

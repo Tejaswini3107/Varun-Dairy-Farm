@@ -129,6 +129,116 @@ billingRouter.get("/customers", requireRole("admin", "manager"), async (req, res
   } catch (err) { next(err); }
 });
 
+// ── Monthly billing ───────────────────────────────────────────────────────────
+
+// GET /billing/monthly-bills?month=YYYY-MM
+billingRouter.get("/monthly-bills", requireRole("admin", "manager"), async (req, res, next) => {
+  try {
+    const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
+    const bills = await db.monthlyBill.findMany({
+      where: { month },
+      include: {
+        customer: {
+          include: { user: { select: { name: true, phone: true } } },
+          select: { id: true, area: true, user: true, walletBalance: true },
+        },
+        payments: { orderBy: { createdAt: "desc" } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // Also include monthly-billing customers that don't yet have a bill for this month
+    const allMonthly = await db.customer.findMany({
+      where: { billingMode: "monthly", status: "active" },
+      include: { user: { select: { name: true, phone: true } } },
+    });
+
+    const billedIds = new Set(bills.map(b => b.customerId));
+    const unbilled = allMonthly.filter(c => !billedIds.has(c.id)).map(c => ({
+      id: null,
+      customerId: c.id,
+      month,
+      totalAmount: 0,
+      paidAmount: 0,
+      status: "unbilled",
+      customer: c,
+      payments: [],
+    }));
+
+    res.json({ data: [...bills, ...unbilled] });
+  } catch (err) { next(err); }
+});
+
+// POST /billing/monthly-bills/generate — calculate & upsert bills for a month
+billingRouter.post("/monthly-bills/generate", requireRole("admin", "manager"), async (req, res, next) => {
+  try {
+    const { month } = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }).parse(req.body);
+    const start = new Date(`${month}-01T00:00:00.000Z`);
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + 1);
+
+    const customers = await db.customer.findMany({
+      where: { billingMode: "monthly", status: "active" },
+    });
+
+    let generated = 0;
+    for (const c of customers) {
+      const agg = await db.order.aggregate({
+        where: { customerId: c.id, status: "delivered", date: { gte: start, lt: end } },
+        _sum: { totalAmount: true },
+      });
+      const totalAmount = agg._sum.totalAmount ?? 0;
+      if (totalAmount === 0) continue;
+
+      const existing = await db.monthlyBill.findUnique({
+        where: { customerId_month: { customerId: c.id, month } },
+      });
+      const paidAmount = existing?.paidAmount ?? 0;
+      const status = paidAmount >= totalAmount ? "paid" : paidAmount > 0 ? "partial" : "unpaid";
+
+      await db.monthlyBill.upsert({
+        where: { customerId_month: { customerId: c.id, month } },
+        create: { customerId: c.id, month, totalAmount, paidAmount: 0, status: "unpaid" },
+        update: { totalAmount, status },
+      });
+      generated++;
+    }
+
+    res.json({ message: `Generated bills for ${generated} customers`, month });
+  } catch (err) { next(err); }
+});
+
+// POST /billing/monthly-bills/:id/collect — record a payment
+billingRouter.post("/monthly-bills/:id/collect", requireRole("admin", "manager"), async (req, res, next) => {
+  try {
+    const { amount, method, notes } = z.object({
+      amount: z.number().positive(),
+      method: z.enum(["cash", "upi", "wallet", "razorpay"]),
+      notes: z.string().optional(),
+    }).parse(req.body);
+
+    const bill = await db.monthlyBill.findUniqueOrThrow({ where: { id: req.params.id } });
+    const newPaid = bill.paidAmount + amount;
+    const status: "unpaid" | "partial" | "paid" = newPaid >= bill.totalAmount ? "paid" : "partial";
+
+    const [updated] = await db.$transaction([
+      db.monthlyBill.update({
+        where: { id: bill.id },
+        data: { paidAmount: newPaid, status },
+        include: {
+          customer: { include: { user: { select: { name: true, phone: true } } } },
+          payments: true,
+        },
+      }),
+      db.monthlyBillPayment.create({
+        data: { billId: bill.id, amount, method, notes },
+      }),
+    ]);
+
+    res.json({ data: updated });
+  } catch (err) { next(err); }
+});
+
 // POST /billing/send-reminders
 billingRouter.post("/send-reminders", requireRole("admin", "manager"), async (_req, res, next) => {
   try {

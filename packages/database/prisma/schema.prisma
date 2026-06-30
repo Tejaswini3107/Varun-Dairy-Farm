@@ -69,18 +69,25 @@ model Customer {
   razorpayContact String?
   notes           String?
   status          CustomerStatus @default(active)
+  billingMode     BillingMode    @default(per_delivery)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   subscriptions   Subscription[]
   orders          Order[]
   transactions    Transaction[]
+  monthlyBills    MonthlyBill[]
 }
 
 enum CustomerStatus {
   active
   inactive
   blocked
+}
+
+enum BillingMode {
+  per_delivery
+  monthly
 }
 
 // ─── Product ──────────────────────────────────────────────────────────────────
@@ -307,6 +314,42 @@ model SpoilageLog {
   valueLost  Float
   loggedAt   DateTime @default(now())
   loggedById String
+}
+
+// ─── Monthly Billing ──────────────────────────────────────────────────────────
+
+enum MonthlyBillStatus {
+  unpaid
+  partial
+  paid
+}
+
+model MonthlyBill {
+  id          String            @id @default(cuid())
+  customerId  String
+  customer    Customer          @relation(fields: [customerId], references: [id])
+  month       String            // "YYYY-MM"
+  totalAmount Float
+  paidAmount  Float             @default(0)
+  status      MonthlyBillStatus @default(unpaid)
+  dueDate     DateTime?
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  payments    MonthlyBillPayment[]
+
+  @@unique([customerId, month])
+}
+
+model MonthlyBillPayment {
+  id          String        @id @default(cuid())
+  billId      String
+  bill        MonthlyBill   @relation(fields: [billId], references: [id], onDelete: Cascade)
+  amount      Float
+  method      PaymentMethod
+  notes       String?
+  createdAt   DateTime      @default(now())
 }
 
 // ─── Transactions / Billing ───────────────────────────────────────────────────

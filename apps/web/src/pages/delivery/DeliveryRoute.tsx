@@ -329,7 +329,15 @@ export default function DeliveryRoute() {
                       {item.product?.name ?? "Item"} ×{item.quantity}
                     </span>
                   ))}
-                  {order.totalAmount > 0 && (
+                  {order.customer?.billingMode === "monthly" ? (
+                    <span style={{
+                      background: isNext ? "rgba(255,255,255,0.2)" : "var(--surface-2)",
+                      color: isNext ? "rgba(255,255,255,0.9)" : "var(--muted)",
+                      borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 700, letterSpacing: 0.3,
+                    }}>
+                      📅 Monthly billing
+                    </span>
+                  ) : order.totalAmount > 0 ? (
                     <span style={{
                       background: isNext ? "rgba(255,255,255,0.2)" : "var(--amber-soft)",
                       color: isNext ? "#fff" : "var(--amber-ink)",
@@ -337,7 +345,7 @@ export default function DeliveryRoute() {
                     }}>
                       ₹{order.totalAmount.toLocaleString("en-IN")}
                     </span>
-                  )}
+                  ) : null}
                 </div>
               </div>
             );
