@@ -71,6 +71,7 @@ ordersRouter.get("/today", async (_req, res, next) => {
       out_for_delivery: orders.filter((o) => o.status === "out_for_delivery"),
       delivered: orders.filter((o) => o.status === "delivered"),
       failed: orders.filter((o) => o.status === "failed"),
+      skipped: orders.filter((o) => o.status === "cancelled" && o.notes === "customer_skip"),
     };
 
     res.json({ data: grouped, total: orders.length });
@@ -261,6 +262,25 @@ ordersRouter.patch("/:id/status", async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// POST /orders/:id/skip — customer skips today's delivery
+ordersRouter.post("/:id/skip", async (req, res, next) => {
+  try {
+    const order = await db.order.findUniqueOrThrow({
+      where: { id: req.params.id },
+      select: { id: true, status: true, customerId: true },
+    });
+    if (["delivered", "failed", "cancelled"].includes(order.status)) {
+      res.status(400).json({ error: "Order cannot be skipped in its current state" });
+      return;
+    }
+    const updated = await db.order.update({
+      where: { id: req.params.id },
+      data: { status: "cancelled", notes: "customer_skip" },
+    });
+    res.json({ data: updated });
+  } catch (err) { next(err); }
 });
 
 // POST /orders/:id/verify-otp

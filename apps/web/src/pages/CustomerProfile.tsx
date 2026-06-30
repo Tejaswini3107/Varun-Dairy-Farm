@@ -278,7 +278,12 @@ export default function CustomerProfile() {
           </Field>
           <div className="flex gap-2 mt-2">
             <Button className="flex-1" onClick={() => setEditModal(false)}>Cancel</Button>
-            <Button variant="primary" className="flex-1" onClick={() => updateCustomer.mutate(editForm)} disabled={updateCustomer.isPending}>
+            <Button variant="primary" className="flex-1" onClick={() => {
+              const body = { ...editForm };
+              if (body.stopSequence !== "" && body.stopSequence != null) body.stopSequence = Number(body.stopSequence);
+              else delete body.stopSequence;
+              updateCustomer.mutate(body);
+            }} disabled={updateCustomer.isPending}>
               {updateCustomer.isPending ? "Saving…" : "Save"}
             </Button>
           </div>

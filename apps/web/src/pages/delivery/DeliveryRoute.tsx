@@ -352,6 +352,7 @@ export default function DeliveryRoute() {
           {doneOrders.map((order: any, i: number) => {
             const delivered = order.status === "delivered";
             const failed = order.status === "failed";
+            const skipped = order.status === "cancelled" && order.notes === "customer_skip";
             return (
               <div key={order.id} style={{
                 background: "var(--surface)", border: "1px solid var(--border)",
@@ -376,11 +377,11 @@ export default function DeliveryRoute() {
                     </div>
                   </div>
                   <span style={{
-                    background: delivered ? "var(--green-soft)" : "var(--red-soft)",
-                    color: delivered ? "var(--green-ink)" : "var(--red-ink)",
+                    background: delivered ? "var(--green-soft)" : skipped ? "var(--surface-2)" : "var(--red-soft)",
+                    color: delivered ? "var(--green-ink)" : skipped ? "var(--muted)" : "var(--red-ink)",
                     borderRadius: 20, padding: "4px 12px", fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", marginLeft: 10,
                   }}>
-                    {delivered ? "✓ Done" : "✗ Failed"}
+                    {delivered ? "✓ Done" : skipped ? "⏭ Skipped" : "✗ Failed"}
                   </span>
                 </div>
               </div>

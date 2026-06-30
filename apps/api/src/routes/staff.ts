@@ -78,6 +78,34 @@ staffRouter.post("/", async (req, res, next) => {
   }
 });
 
+// PATCH /staff/:id — update name/phone/role
+staffRouter.patch("/:id", async (req, res, next) => {
+  try {
+    const { name, phone, role } = z.object({
+      name: z.string().min(2).optional(),
+      phone: z.string().regex(/^[6-9]\d{9}$/).optional(),
+      role: z.enum(["manager", "delivery_agent"]).optional(),
+    }).parse(req.body);
+
+    const staff = await db.staff.findUniqueOrThrow({ where: { id: req.params.id } });
+    if (name || phone) {
+      await db.user.update({ where: { id: staff.userId }, data: { ...(name ? { name } : {}), ...(phone ? { phone } : {}) } });
+    }
+    if (role) await db.staff.update({ where: { id: req.params.id }, data: { role } });
+    res.json({ message: "Updated" });
+  } catch (err) { next(err); }
+});
+
+// DELETE /staff/:id
+staffRouter.delete("/:id", async (req, res, next) => {
+  try {
+    const staff = await db.staff.findUniqueOrThrow({ where: { id: req.params.id } });
+    await db.staff.delete({ where: { id: req.params.id } });
+    await db.user.delete({ where: { id: staff.userId } });
+    res.json({ message: "Deleted" });
+  } catch (err) { next(err); }
+});
+
 // PATCH /staff/:id/assign-route
 staffRouter.patch("/:id/assign-route", async (req, res, next) => {
   try {

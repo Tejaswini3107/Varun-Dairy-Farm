@@ -32,6 +32,9 @@ function fmtDate(dt: string) {
 export default function Staff() {
   const [tab, setTab] = useState<"team" | "attendance">("team");
   const [showAdd, setShowAdd] = useState(false);
+  const [editTarget, setEditTarget] = useState<{ staffId: string } | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", role: "delivery_agent" });
+  const [editErr, setEditErr] = useState("");
   const [assignTarget, setAssignTarget] = useState<{ staffId: string; name: string } | null>(null);
   const [routeId, setRouteId] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", role: "delivery_agent" });
@@ -55,6 +58,12 @@ export default function Staff() {
     mutationFn: (body: any) => api.post("/staff", body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["staff"] }); setShowAdd(false); setForm({ name: "", phone: "", role: "delivery_agent" }); },
     onError: (e: Error) => setFormErr(e.message),
+  });
+
+  const updateStaff = useMutation({
+    mutationFn: ({ staffId, body }: { staffId: string; body: any }) => api.patch(`/staff/${staffId}`, body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["staff"] }); setEditTarget(null); },
+    onError: (e: Error) => setEditErr(e.message),
   });
 
   const assignRoute = useMutation({
@@ -126,9 +135,14 @@ export default function Staff() {
                   </td>
                   <td className="px-3.5 py-3.5 border-t border-[var(--border)]">{statusBadge(s.status)}</td>
                   <td className="px-3.5 py-3.5 border-t border-[var(--border)]">
-                    <Button onClick={() => { setAssignTarget({ staffId: s.id, name: s.name }); setRouteId(""); }}>
-                      <i className="ti ti-route text-xs" /> Assign route
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button onClick={() => { setEditForm({ name: s.name, phone: s.phone, role: s.role }); setEditErr(""); setEditTarget({ staffId: s.id }); }}>
+                        <i className="ti ti-edit text-xs" /> Edit
+                      </Button>
+                      <Button onClick={() => { setAssignTarget({ staffId: s.id, name: s.name }); setRouteId(""); }}>
+                        <i className="ti ti-route text-xs" /> Assign route
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -197,6 +211,27 @@ export default function Staff() {
             </tbody>
           </table>
         </Card>
+      )}
+
+      {editTarget && (
+        <Modal title="Edit staff member" onClose={() => setEditTarget(null)} width={380}>
+          <Field label="Full name"><input style={inputStyle} value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} autoFocus /></Field>
+          <Field label="Mobile number"><input style={inputStyle} value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))} /></Field>
+          <Field label="Role">
+            <select style={selectStyle} value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
+              <option value="delivery_agent">Delivery agent</option>
+              <option value="manager">Manager</option>
+            </select>
+          </Field>
+          {editErr && <p style={{ color: "var(--red)", fontSize: 13, marginBottom: 10 }}>{editErr}</p>}
+          <div className="flex gap-2 mt-2">
+            <Button className="flex-1" onClick={() => setEditTarget(null)}>Cancel</Button>
+            <Button variant="primary" className="flex-1" onClick={() => {
+              if (!editForm.name || editForm.phone.length !== 10) { setEditErr("Name and 10-digit phone required"); return; }
+              updateStaff.mutate({ staffId: editTarget.staffId, body: editForm });
+            }} disabled={updateStaff.isPending}>{updateStaff.isPending ? "Saving…" : "Save changes"}</Button>
+          </div>
+        </Modal>
       )}
 
       {showAdd && (

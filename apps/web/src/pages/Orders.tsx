@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { LiveBadge } from "@/components/ui/LiveBadge";
 import { Modal, Field, selectStyle } from "@/components/ui/Modal";
 
-type Status = "pending" | "assigned" | "out_for_delivery" | "delivered" | "failed";
+type Status = "pending" | "assigned" | "out_for_delivery" | "delivered" | "failed" | "skipped";
 
 const COLS: { key: Status; label: string; color: string; headerColor: string }[] = [
   { key: "pending",          label: "New",             color: "var(--surface-2)",  headerColor: "var(--ink)" },
@@ -15,6 +15,7 @@ const COLS: { key: Status; label: string; color: string; headerColor: string }[]
   { key: "out_for_delivery", label: "Out for delivery",color: "var(--amber-soft)", headerColor: "var(--amber-ink)" },
   { key: "delivered",        label: "Delivered",       color: "var(--green-soft)", headerColor: "var(--green-ink)" },
   { key: "failed",           label: "Failed",          color: "var(--red-soft)",   headerColor: "var(--red-ink)" },
+  { key: "skipped",          label: "Skipped",         color: "var(--surface-2)",  headerColor: "var(--muted)" },
 ];
 
 const PRODUCT_ICON: Record<string, string> = {
@@ -69,12 +70,13 @@ export default function Orders() {
     onError: (e: Error) => alert(e.message),
   });
 
-  const grouped = ordersRes?.data ?? { pending: [], assigned: [], out_for_delivery: [], delivered: [], failed: [] };
+  const grouped = ordersRes?.data ?? { pending: [], assigned: [], out_for_delivery: [], delivered: [], failed: [], skipped: [] };
   const total = ordersRes?.total ?? 0;
   const staff = staffRes?.data ?? [];
 
   const failedCount = (grouped["failed"] ?? []).length;
   const outCount = (grouped["out_for_delivery"] ?? []).length;
+  const skippedCount = (grouped["skipped"] ?? []).length;
 
   return (
     <div className="animate-fade">
@@ -85,6 +87,7 @@ export default function Orders() {
             Today · {total} orders
             {outCount > 0 && <span className="ml-2 text-[var(--amber-ink)] font-semibold">· {outCount} on the road</span>}
             {failedCount > 0 && <span className="ml-2 text-[var(--red-ink)] font-semibold">· {failedCount} failed</span>}
+            {skippedCount > 0 && <span className="ml-2 text-[var(--muted)] font-semibold">· {skippedCount} skipped</span>}
           </p>
         </div>
         <div className="flex items-center gap-2.5">
@@ -95,7 +98,7 @@ export default function Orders() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12 }}>
         {COLS.map(col => {
           const orders = grouped[col.key] ?? [];
           return (
@@ -160,6 +163,13 @@ export default function Orders() {
                   {col.key === "out_for_delivery" && (
                     <div style={{ fontSize: 10, color: "var(--amber-ink)", display: "flex", alignItems: "center", gap: 4, fontWeight: 600 }}>
                       <i className="ti ti-truck-delivery" style={{ fontSize: 12 }} /> On the way
+                    </div>
+                  )}
+
+                  {/* Skipped indicator */}
+                  {col.key === "skipped" && (
+                    <div style={{ fontSize: 10, color: "var(--muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                      <i className="ti ti-player-skip-forward" style={{ fontSize: 12 }} /> Customer skipped
                     </div>
                   )}
 
