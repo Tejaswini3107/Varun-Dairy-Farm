@@ -160,9 +160,10 @@ deliveryRouter.patch("/routes/:id/assign-agent", requireRole("admin", "manager")
 
     await db.route.update({ where: { id: req.params.id }, data: { agentId } });
 
-    // Assign today's pending/assigned orders to this agent
+    // Re-assign ALL today's non-terminal orders on this route to the new agent
+    // (includes orders previously assigned to a different agent, keeping them consistent)
     await db.order.updateMany({
-      where: { routeId: req.params.id, date: { gte: today, lt: tomorrow }, status: { in: ["pending", "assigned"] } },
+      where: { routeId: req.params.id, date: { gte: today, lt: tomorrow }, status: { in: ["pending", "assigned", "out_for_delivery"] } },
       data: { deliveryAgentId: agentId, status: "assigned" },
     });
 

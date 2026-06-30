@@ -112,14 +112,14 @@ staffRouter.patch("/:id/assign-route", async (req, res, next) => {
     const { routeId } = z.object({ routeId: z.string() }).parse(req.body);
     // Unassign previous route for this agent
     await db.route.updateMany({ where: { agentId: req.params.id }, data: { agentId: null } });
-    // Assign new route
-    await db.route.update({ where: { id: routeId }, data: { agentId: req.params.id, status: "in_progress" } });
-    // Assign all today's orders on this route to agent
+    // Assign new route (don't force in_progress — let the agent start it themselves)
+    await db.route.update({ where: { id: routeId }, data: { agentId: req.params.id } });
+    // Re-assign ALL non-terminal today's orders on this route to keep admin board consistent
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     await db.order.updateMany({
-      where: { routeId, status: { in: ["pending", "assigned"] }, date: { gte: today } },
-      data: { deliveryAgentId: req.params.id, status: "out_for_delivery" },
+      where: { routeId, status: { in: ["pending", "assigned", "out_for_delivery"] }, date: { gte: today } },
+      data: { deliveryAgentId: req.params.id, status: "assigned" },
     });
     res.json({ message: "Route assigned and orders dispatched" });
   } catch (err) {
