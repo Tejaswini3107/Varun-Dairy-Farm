@@ -31,6 +31,7 @@ export default function CustomerHome({ user }: { user: any }) {
   const [vacSaving, setVacSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [skipping, setSkipping] = useState(false);
+  const [accountModal, setAccountModal] = useState(false);
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(""), 2500); }
 
@@ -190,18 +191,65 @@ export default function CustomerHome({ user }: { user: any }) {
         </div>
       )}
 
+      {/* Account modal */}
+      {accountModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 400, display: "flex", alignItems: "flex-end" }}>
+          <div style={{ background: "var(--surface)", borderRadius: "20px 20px 0 0", padding: 24, width: "100%", boxSizing: "border-box" }}>
+            <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 6 }}>{user.name}</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 24 }}>{user.phone} · Customer</div>
+            <button onClick={() => {
+              localStorage.removeItem("vdf_customer_token");
+              localStorage.removeItem("vdf_customer_user");
+              nav("/customer-login");
+            }}
+              style={{ width: "100%", background: "var(--red-soft)", color: "var(--red-ink)", border: "none", borderRadius: 14, padding: "14px 0", fontSize: 15, fontWeight: 700, cursor: "pointer", marginBottom: 10 }}>
+              Sign out
+            </button>
+            <button onClick={async () => {
+              const pin = prompt("Enter your 4-digit PIN to confirm account deletion:");
+              if (!pin || pin.length !== 4) return;
+              if (!confirm("This will permanently delete your account and all your data. Are you sure?")) return;
+              const token = localStorage.getItem("vdf_customer_token");
+              const res = await fetch(`${BASE}/auth/account`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ pin }),
+              });
+              const data = await res.json();
+              if (!res.ok) { alert(data.error ?? "Failed to delete account"); return; }
+              localStorage.removeItem("vdf_customer_token");
+              localStorage.removeItem("vdf_customer_user");
+              nav("/customer-login");
+            }}
+              style={{ width: "100%", background: "none", color: "var(--red-ink)", border: "1px solid var(--red)", borderRadius: 14, padding: "12px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 10 }}>
+              Delete account
+            </button>
+            <button onClick={() => setAccountModal(false)}
+              style={{ width: "100%", background: "none", border: "1px solid var(--border-2)", borderRadius: 14, padding: "12px 0", fontSize: 14, fontWeight: 600, cursor: "pointer", color: "var(--muted)" }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 12, color: "var(--muted)" }}>Good morning</div>
           <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: -0.4 }}>{user.name}</div>
         </div>
-        <div onClick={() => nav("/customer-app/wallet")}
-          style={{ display: "flex", alignItems: "center", gap: 6, background: wallet < 0 ? "var(--red-soft)" : "var(--green-soft)", borderRadius: 20, padding: "7px 12px", cursor: "pointer" }}>
-          <span>👝</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: wallet < 0 ? "var(--red-ink)" : "var(--green-ink)", fontFamily: "monospace" }}>
-            {wallet < 0 ? "−" : ""}₹{Math.abs(wallet).toLocaleString("en-IN")}
-          </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div onClick={() => nav("/customer-app/wallet")}
+            style={{ display: "flex", alignItems: "center", gap: 6, background: wallet < 0 ? "var(--red-soft)" : "var(--green-soft)", borderRadius: 20, padding: "7px 12px", cursor: "pointer" }}>
+            <span>👝</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: wallet < 0 ? "var(--red-ink)" : "var(--green-ink)", fontFamily: "monospace" }}>
+              {wallet < 0 ? "−" : ""}₹{Math.abs(wallet).toLocaleString("en-IN")}
+            </span>
+          </div>
+          <button onClick={() => setAccountModal(true)}
+            style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--surface-2)", border: "1px solid var(--border)", cursor: "pointer", display: "grid", placeItems: "center", fontSize: 18, color: "var(--muted)" }}>
+            ⚙
+          </button>
         </div>
       </div>
 

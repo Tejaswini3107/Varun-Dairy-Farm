@@ -25,6 +25,8 @@ model User {
   role        UserRole  @default(customer)
   avatarUrl   String?
   fcmToken    String?
+  pinHash     String?
+  pinSetAt    DateTime?
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

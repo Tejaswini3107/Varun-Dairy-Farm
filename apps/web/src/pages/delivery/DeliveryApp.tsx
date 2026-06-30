@@ -321,11 +321,33 @@ function DeliveryProfile({ user }: { user: any }) {
         )}
       </div>
 
-      {/* Sign out */}
-      <button onClick={() => { localStorage.removeItem("vdf_delivery_token"); localStorage.removeItem("vdf_delivery_user"); nav("/delivery-login"); }}
-        style={{ width: "100%", background: "var(--red-soft)", color: "var(--red-ink)", border: "none", borderRadius: 14, padding: "16px 0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-        Sign out
-      </button>
+      {/* Account actions */}
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 18, padding: 16, marginBottom: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Account</div>
+        <button onClick={() => { localStorage.removeItem("vdf_delivery_token"); localStorage.removeItem("vdf_delivery_user"); nav("/delivery-login"); }}
+          style={{ width: "100%", background: "var(--red-soft)", color: "var(--red-ink)", border: "none", borderRadius: 14, padding: "14px 0", fontSize: 15, fontWeight: 700, cursor: "pointer", marginBottom: 10 }}>
+          Sign out
+        </button>
+        <button onClick={async () => {
+          const pin = prompt("Enter your PIN to confirm account deletion:");
+          if (!pin || pin.length !== 4) return;
+          if (!confirm("This will permanently delete your account. Are you sure?")) return;
+          const token = localStorage.getItem("vdf_delivery_token");
+          const res = await fetch(`${BASE}/auth/account`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ pin }),
+          });
+          const data = await res.json();
+          if (!res.ok) { alert(data.error ?? "Failed to delete account"); return; }
+          localStorage.removeItem("vdf_delivery_token");
+          localStorage.removeItem("vdf_delivery_user");
+          nav("/delivery-login");
+        }}
+          style={{ width: "100%", background: "none", color: "var(--red-ink)", border: "1px solid var(--red)", borderRadius: 14, padding: "12px 0", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          Delete account
+        </button>
+      </div>
     </div>
   );
 }

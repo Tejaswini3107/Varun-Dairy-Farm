@@ -57,6 +57,6 @@ export async function signToken(userId: string) {
       staffId: user.staff?.id,
     },
     process.env.JWT_SECRET!,
-    { expiresIn: "30d" }
+    { expiresIn: "180d" }
   );
 }
